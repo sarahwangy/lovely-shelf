@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lovely-shelf v2 — 上传</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: { 900:'#0d0d14', 800:'#13131e', 700:'#1a1a2e', 600:'#22223f', 500:'#2d2d52' },
+            violet: { 400:'#a78bfa', 500:'#8b5cf6', 600:'#7c3aed', glow:'rgba(139,92,246,.25)' },
+            slate: { text:'#e2e8f0', muted:'#94a3b8', faint:'#475569' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #0d0d14; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; min-height: 100vh; }
+
+    .glow-border {
+      border: 1.5px solid rgba(139,92,246,.3);
+      box-shadow: 0 0 0 1px rgba(139,92,246,.1), inset 0 0 40px rgba(139,92,246,.03);
+    }
+    .glow-border:hover {
+      border-color: rgba(139,92,246,.6);
+      box-shadow: 0 0 0 1px rgba(139,92,246,.2), 0 0 30px rgba(139,92,246,.12), inset 0 0 40px rgba(139,92,246,.05);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      box-shadow: 0 4px 20px rgba(124,58,237,.4), 0 0 0 1px rgba(139,92,246,.3);
+      transition: all .2s;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 28px rgba(124,58,237,.55), 0 0 0 1px rgba(139,92,246,.5);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .thumb { transition: transform .2s, box-shadow .2s; }
+    .thumb:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    .float-icon { animation: float 3s ease-in-out infinite; }
+
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    .shimmer-text {
+      background: linear-gradient(90deg, #a78bfa, #c4b5fd, #8b5cf6, #a78bfa);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #8b5cf6; box-shadow: 0 0 8px #8b5cf6; animation: pulse-dot 1.5s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      box-shadow: 0 0 12px rgba(139,92,246,.5);
+    }
+
+    input[type=file] { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header style="background:rgba(13,13,20,.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(139,92,246,.15);" class="px-5 py-4 flex items-center justify-between sticky top-0 z-20">
+    <div class="flex items-center gap-2.5">
+      <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);box-shadow:0 0 16px rgba(124,58,237,.5);" class="w-8 h-8 rounded-xl flex items-center justify-center">
+        <i class="fa-solid fa-book-open text-white text-sm"></i>
+      </div>
+      <span class="font-semibold text-slate-text tracking-tight">lovely<span class="text-violet-400">-shelf</span></span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button style="background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);" class="text-violet-400 text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-violet-600/20 transition-colors">
+        <i class="fa-regular fa-clock text-xs"></i> 历史
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto px-4 py-10">
+
+    <!-- Hero -->
+    <div class="text-center mb-10">
+      <div class="float-icon text-5xl mb-5">📚</div>
+      <h1 class="text-2xl font-bold mb-2">
+        <span class="shimmer-text">AI 书库助手</span>
+      </h1>
+      <p class="text-slate-muted text-sm">拍一张封面，自动整理进你的 Notion 书库</p>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="glow-border rounded-3xl p-10 text-center cursor-pointer mb-6 transition-all duration-300" onclick="document.getElementById('fi').click()" style="background:rgba(139,92,246,.04);">
+      <div style="background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.25);" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5">
+        <i class="fa-solid fa-cloud-arrow-up text-violet-400 text-2xl"></i>
+      </div>
+      <p class="font-semibold text-slate-text mb-1.5">拖拽图片到这里</p>
+      <p class="text-slate-faint text-xs mb-5">或点击选择 · JPG PNG HEIC · 支持批量</p>
+      <button class="btn-primary text-white text-sm font-semibold px-6 py-2.5 rounded-full flex items-center gap-2 mx-auto">
+        <i class="fa-solid fa-plus text-xs"></i> 选择图片
+      </button>
+      <input id="fi" type="file" accept="image/*" multiple />
+    </div>
+
+    <!-- Selected thumbnails -->
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="status-dot"></div>
+          <span class="text-sm text-slate-text font-medium">已选 <span class="text-violet-400">3</span> 张</span>
+        </div>
+        <button class="text-xs text-slate-faint hover:text-red-400 transition-colors">
+          <i class="fa-solid fa-trash-can mr-1"></i>清空
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="thumb relative rounded-2xl overflow-hidden aspect-[3/4] group" style="box-shadow:0 4px 20px rgba(0,0,0,.4);">
+          <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div style="background:rgba(0,0,0,.7);backdrop-filter:blur(8px);" class="w-6 h-6 rounded-full flex items-center justify-center">
+              <i class="fa-solid fa-xmark text-white text-xs"></i>
+            </div>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 p-2">
+            <p class="text-white text-xs truncate font-medium">Being_You.jpg</p>
+          </div>
+        </div>
+
+        <div class="thumb relative rounded-2xl overflow-hidden aspect-[3/4] group" style="box-shadow:0 4px 20px rgba(0,0,0,.4);">
+          <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div style="background:rgba(0,0,0,.7);backdrop-filter:blur(8px);" class="w-6 h-6 rounded-full flex items-center justify-center">
+              <i class="fa-solid fa-xmark text-white text-xs"></i>
+            </div>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 p-2">
+            <p class="text-white text-xs truncate font-medium">IMG_0045.heic</p>
+          </div>
+        </div>
+
+        <div class="thumb relative rounded-2xl overflow-hidden aspect-[3/4] group" style="box-shadow:0 4px 20px rgba(0,0,0,.4);">
+          <img src="https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div style="background:rgba(0,0,0,.7);backdrop-filter:blur(8px);" class="w-6 h-6 rounded-full flex items-center justify-center">
+              <i class="fa-solid fa-xmark text-white text-xs"></i>
+            </div>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 p-2">
+            <p class="text-white text-xs truncate font-medium">IMG_0089.jpg</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button class="btn-primary w-full text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2.5 text-base mb-3">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        开始 AI 识别（3 张）
+      </button>
+      <p class="text-center text-xs text-slate-faint">识别完成后预览并编辑，再决定是否写入 Notion</p>
+    </div>
+
+    <!-- Processing state (hidden by default) -->
+    <div id="proc" class="hidden mt-6">
+      <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);" class="rounded-2xl p-5 mb-3">
+        <div class="flex items-center gap-3 mb-4">
+          <div style="background:rgba(139,92,246,.2);" class="w-10 h-10 rounded-xl flex items-center justify-center">
+            <i class="fa-solid fa-spinner fa-spin text-violet-400"></i>
+          </div>
+          <div>
+            <p class="font-semibold text-sm text-slate-text">正在识别第 2 / 3 张</p>
+            <p class="text-xs text-slate-muted">IMG_0045.heic · 预计还需 4 秒</p>
+          </div>
+        </div>
+        <div style="background:rgba(139,92,246,.15);" class="w-full rounded-full h-1.5">
+          <div class="progress-bar h-1.5 rounded-full" style="width:55%"></div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);" class="flex items-center gap-3 rounded-xl px-4 py-3">
+          <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+          <span class="text-sm text-slate-text flex-1">Being_You.jpg</span>
+          <span class="text-xs text-emerald-400 font-medium">完成</span>
+        </div>
+        <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);" class="flex items-center gap-3 rounded-xl px-4 py-3">
+          <i class="fa-solid fa-spinner fa-spin text-violet-400 text-sm"></i>
+          <span class="text-sm text-slate-text flex-1">IMG_0045.heic</span>
+          <span class="text-xs text-violet-400 font-medium">识别中…</span>
+        </div>
+        <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);" class="flex items-center gap-3 rounded-xl px-4 py-3">
+          <i class="fa-regular fa-circle text-slate-faint text-sm"></i>
+          <span class="text-sm text-slate-muted flex-1">IMG_0089.jpg</span>
+          <span class="text-xs text-slate-faint font-medium">等待</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</body>
+</html>
