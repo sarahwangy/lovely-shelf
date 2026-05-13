@@ -84,3 +84,24 @@
 
 - **一句话总结：**
   阶段 1 里程碑达成：一张图片经过预处理→Claude识别→Notion上传→数据库写入，全链路约 6 秒跑通。
+
+---
+
+### T09 - 后端 API POST /api/process
+
+- **学到的核心概念：**
+  - Next.js Route Handler：文件放在 `app/api/xxx/route.ts`，导出函数名就是 HTTP 方法（POST/GET），框架自动变成 URL 端点
+  - HTTP 状态码分层：400 参数错误、422 业务逻辑失败、500 服务器异常，行业标准
+  - 两个世界的桥梁：浏览器用 `File`/`ArrayBuffer`，Node.js 用 `Buffer`，中间需要 `Buffer.from(arrayBuffer)` 转换
+
+- **用到的关键 API/函数：**
+  - `request.formData()`：Web 标准 API，自动解析 multipart/form-data
+  - `file.arrayBuffer()`：把 File 对象读成二进制数据
+  - `NextResponse.json(data, { status })`：返回 JSON 响应，Next.js 封装了原生 Response
+
+- **容易踩的坑：**
+  - curl 测试时不带 `-F` 参数直接 POST 会报 Content-Type 错误，这是正常的——接口只接受 multipart
+  - AI 识别失败要单独捕获并返回 422，不能和其他错误混在一起，否则前端无法区分"识别失败可重试"和"服务器崩了"
+
+- **一句话总结：**
+  Route Handler 是 lib/ 工具函数和前端之间的"服务员"，自己不做业务逻辑，只负责接单、转发、返回结果。
