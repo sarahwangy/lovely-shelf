@@ -33,11 +33,19 @@ export async function uploadFileToNotion(
     upload_url: string;
   };
 
-  // 第二步：把图片内容 PUT 到刚才拿到的上传地址
+  // 第二步：用 multipart/form-data 把图片发到 Notion 的 /send 端点
+  // Blob 是浏览器和 Node.js 18+ 都支持的二进制对象，FormData 需要它
+  const formData = new FormData();
+  formData.append("file", new Blob([new Uint8Array(buffer)], { type: "image/jpeg" }), filename);
+
   const uploadRes = await fetch(upload_url, {
-    method: "PUT",
-    headers: { "Content-Type": "image/jpeg" },
-    body: new Uint8Array(buffer), // fetch 不接受 Node Buffer，转成 Uint8Array
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+      // 注意：不要手动设 Content-Type，fetch 会自动加 boundary
+    },
+    body: formData,
   });
 
   if (!uploadRes.ok) {
