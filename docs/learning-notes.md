@@ -64,3 +64,23 @@
 
 - **一句话总结：**
   通过字段映射常量 + 计算属性名，让 Notion 写入代码既类型安全又易维护，字段名改动只需改一处。
+
+---
+
+### T08 - 端到端脚本（阶段 1 里程碑）
+
+- **学到的核心概念：**
+  - 端到端脚本：把多个独立函数串成一条链路，每步计时，出错时定位到哪步失败
+  - `multipart/form-data`：上传文件的标准 HTTP 格式，用 `FormData` + `Blob` 构造，不能手动设 `Content-Type`（fetch 自动加 boundary）
+  - 调试思路：先单独测每一步的 API 返回值，而不是猜测
+
+- **用到的关键 API/函数：**
+  - `FormData` + `Blob`：Node.js 18+ 内置，构造 multipart 请求体
+  - `new Uint8Array(buffer)`：Node Buffer → 标准 Web API 兼容类型的转换
+
+- **容易踩的坑：**
+  - Notion 文件上传第二步的 `upload_url` 是 Notion 自己的端点（`/send`），需要带 Authorization 头，不是 S3 匿名上传
+  - `FormData` 发文件时不能手动写 `Content-Type: multipart/form-data`，否则 boundary 会丢失导致解析失败
+
+- **一句话总结：**
+  阶段 1 里程碑达成：一张图片经过预处理→Claude识别→Notion上传→数据库写入，全链路约 6 秒跑通。
