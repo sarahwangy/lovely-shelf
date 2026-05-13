@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lovely-shelf — 上传</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            shelf: { 50:'#fdf8f0', 100:'#faefd9', 200:'#f5d9a8', 300:'#efc070', 400:'#e8a040', 500:'#d97706', 600:'#b45309', 700:'#92400e' },
+            ink: { DEFAULT:'#1c1917', muted:'#78716c', light:'#a8a29e' }
+          },
+          fontFamily: { sans: ['-apple-system','BlinkMacSystemFont','PingFang SC','Helvetica Neue','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    .drop-zone { background: repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(217,119,6,.04) 8px,rgba(217,119,6,.04) 16px); }
+    .drop-zone.drag-over { background: rgba(217,119,6,.08); border-color:#d97706; }
+    .thumb-card { transition: transform .2s, box-shadow .2s; }
+    .thumb-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .pulse-ring { animation: pulse-ring 1.8s ease-out infinite; }
+    @keyframes pulse-ring { 0%{transform:scale(.95);opacity:.7} 70%{transform:scale(1.05);opacity:.2} 100%{transform:scale(.95);opacity:.7} }
+  </style>
+</head>
+<body class="bg-shelf-50 min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-stone-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-shelf-500 rounded-lg flex items-center justify-center shadow-sm">
+        <i class="fa-solid fa-book-open text-white text-sm"></i>
+      </div>
+      <span class="font-semibold text-ink text-lg tracking-tight">lovely-shelf</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="#" class="text-ink-muted text-sm hover:text-shelf-600 transition-colors flex items-center gap-1.5">
+        <i class="fa-regular fa-clock text-xs"></i> 历史记录
+      </a>
+      <div class="w-8 h-8 rounded-full bg-shelf-100 flex items-center justify-center text-shelf-600">
+        <i class="fa-solid fa-user text-xs"></i>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 py-10">
+
+    <!-- Hero text -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl font-bold text-ink mb-2">整理你的书架</h1>
+      <p class="text-ink-muted text-sm">拍一张书封面，AI 自动识别并存入你的 Notion 书库</p>
+    </div>
+
+    <!-- Drop Zone — Empty State -->
+    <div id="dropZone" class="drop-zone border-2 border-dashed border-shelf-300 rounded-2xl p-10 text-center cursor-pointer transition-all duration-200 hover:border-shelf-500 hover:bg-shelf-50 mb-4" onclick="document.getElementById('fileInput').click()">
+      <div class="pulse-ring w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center mx-auto mb-5">
+        <i class="fa-solid fa-camera-retro text-shelf-500 text-2xl"></i>
+      </div>
+      <p class="font-semibold text-ink mb-1">拍照或选择图片</p>
+      <p class="text-ink-light text-sm mb-4">支持 JPG · PNG · HEIC，可多选</p>
+      <span class="inline-flex items-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors shadow-sm">
+        <i class="fa-solid fa-plus text-xs"></i> 选择图片
+      </span>
+      <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFiles(this.files)" />
+    </div>
+
+    <!-- Tip -->
+    <p class="text-center text-ink-light text-xs mb-8">
+      <i class="fa-solid fa-circle-info mr-1"></i>
+      手机用户可直接调用相机拍照上传
+    </p>
+
+    <!-- ── After selecting files ── -->
+    <div id="previewSection" class="hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-ink text-sm">已选择 <span id="fileCount" class="text-shelf-600">3</span> 张</h2>
+        <button onclick="clearAll()" class="text-xs text-ink-muted hover:text-red-500 transition-colors">
+          <i class="fa-solid fa-trash-can mr-1"></i>清空
+        </button>
+      </div>
+
+      <!-- Thumbnail Grid -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <!-- Book 1 -->
+        <div class="thumb-card relative group rounded-xl overflow-hidden shadow-sm aspect-[3/4] bg-stone-100">
+          <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+            <button class="opacity-0 group-hover:opacity-100 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center text-red-400 transition-all">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent p-2">
+            <p class="text-white text-xs truncate">Being_You.jpg</p>
+          </div>
+        </div>
+
+        <!-- Book 2 -->
+        <div class="thumb-card relative group rounded-xl overflow-hidden shadow-sm aspect-[3/4] bg-stone-100">
+          <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+            <button class="opacity-0 group-hover:opacity-100 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center text-red-400 transition-all">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent p-2">
+            <p class="text-white text-xs truncate">IMG_0045.heic</p>
+          </div>
+        </div>
+
+        <!-- Book 3 -->
+        <div class="thumb-card relative group rounded-xl overflow-hidden shadow-sm aspect-[3/4] bg-stone-100">
+          <img src="https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=400&fit=crop" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+            <button class="opacity-0 group-hover:opacity-100 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center text-red-400 transition-all">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent p-2">
+            <p class="text-white text-xs truncate">IMG_0089.jpg</p>
+          </div>
+        </div>
+
+        <!-- Add more button -->
+        <div class="thumb-card rounded-xl border-2 border-dashed border-shelf-200 aspect-[3/4] flex flex-col items-center justify-center cursor-pointer hover:border-shelf-400 hover:bg-shelf-50 transition-all" onclick="document.getElementById('fileInput').click()">
+          <i class="fa-solid fa-plus text-shelf-400 text-xl mb-1"></i>
+          <span class="text-xs text-shelf-400">继续添加</span>
+        </div>
+      </div>
+
+      <!-- CTA Button -->
+      <button class="w-full bg-shelf-500 hover:bg-shelf-600 active:bg-shelf-700 text-white font-semibold py-4 rounded-2xl transition-colors shadow-md flex items-center justify-center gap-2 text-base">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        开始识别（3 张）
+      </button>
+      <p class="text-center text-xs text-ink-light mt-3">识别完成后可以预览并修改，再决定是否写入 Notion</p>
+    </div>
+
+    <!-- ── Processing State ── -->
+    <div id="processingSection" class="hidden">
+      <div class="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 mb-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-shelf-100 flex items-center justify-center">
+            <i class="fa-solid fa-spinner fa-spin text-shelf-500"></i>
+          </div>
+          <div>
+            <p class="font-semibold text-ink text-sm">正在识别第 2 / 3 张</p>
+            <p class="text-xs text-ink-muted">IMG_0045.heic</p>
+          </div>
+        </div>
+        <!-- Progress bar -->
+        <div class="w-full bg-shelf-100 rounded-full h-2">
+          <div class="bg-shelf-500 h-2 rounded-full transition-all duration-500" style="width:55%"></div>
+        </div>
+        <p class="text-right text-xs text-ink-light mt-1.5">55%</p>
+      </div>
+
+      <!-- Per-image status list -->
+      <div class="space-y-2">
+        <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-green-100">
+          <i class="fa-solid fa-circle-check text-green-500 text-sm"></i>
+          <span class="text-sm text-ink flex-1">Being_You.jpg</span>
+          <span class="text-xs text-green-600 font-medium">识别完成</span>
+        </div>
+        <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-shelf-200">
+          <i class="fa-solid fa-spinner fa-spin text-shelf-500 text-sm"></i>
+          <span class="text-sm text-ink flex-1">IMG_0045.heic</span>
+          <span class="text-xs text-shelf-600 font-medium">识别中…</span>
+        </div>
+        <div class="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-stone-100">
+          <i class="fa-regular fa-circle text-ink-light text-sm"></i>
+          <span class="text-sm text-ink-muted flex-1">IMG_0089.jpg</span>
+          <span class="text-xs text-ink-light font-medium">等待中</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Show preview section by default for prototype -->
+  <script>
+    document.getElementById('previewSection').classList.remove('hidden');
+    function handleFiles(files) {}
+    function clearAll() {
+      document.getElementById('previewSection').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

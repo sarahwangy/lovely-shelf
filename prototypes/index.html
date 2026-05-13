@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lovely-shelf — 原型总览</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f1ede8; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+    .phone-shell {
+      width: 390px;
+      background: #1a1a1a;
+      border-radius: 50px;
+      padding: 14px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08) inset;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 680px;
+      border-radius: 38px;
+      overflow: hidden;
+      position: relative;
+      background: #fdf8f0;
+    }
+    .phone-notch {
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 120px; height: 34px;
+      background: #1a1a1a;
+      border-radius: 0 0 20px 20px;
+      z-index: 10;
+    }
+    .phone-screen iframe {
+      width: 100%; height: 100%;
+      border: none;
+      display: block;
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+      background: transparent;
+      color: #78716c;
+    }
+    .tab-btn.active {
+      background: #d97706;
+      color: white;
+      box-shadow: 0 4px 12px rgba(217,119,6,.35);
+    }
+    .tab-btn:not(.active):hover { background: rgba(0,0,0,.06); }
+    .page-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #a8a29e;
+      text-align: center;
+      margin-top: 16px;
+    }
+    .page-desc {
+      font-size: 13px;
+      color: #78716c;
+      text-align: center;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div style="background:#fff;border-bottom:1px solid #e7e5e4;padding:16px 32px;display:flex;align-items:center;justify-between;position:sticky;top:0;z-index:50;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;background:#d97706;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <i class="fa-solid fa-book-open" style="color:white;font-size:14px;"></i>
+      </div>
+      <span style="font-size:17px;font-weight:700;color:#1c1917;letter-spacing:-.02em;">lovely-shelf</span>
+      <span style="font-size:12px;color:#a8a29e;background:#f5f5f4;padding:3px 8px;border-radius:999px;font-weight:500;">UI 原型</span>
+    </div>
+    <div style="font-size:13px;color:#a8a29e;">
+      <i class="fa-solid fa-mobile-screen mr-1"></i>iPhone 15 Pro · 390px
+    </div>
+  </div>
+
+  <!-- Pages layout -->
+  <div style="display:flex;gap:48px;justify-content:center;align-items:flex-start;padding:48px 32px;flex-wrap:wrap;">
+
+    <!-- Page 1: Upload -->
+    <div>
+      <div class="phone-shell">
+        <!-- Status bar -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px 10px;color:white;font-size:11px;font-weight:600;">
+          <span>9:41</span>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <i class="fa-solid fa-signal" style="font-size:12px;"></i>
+            <i class="fa-solid fa-wifi" style="font-size:12px;"></i>
+            <i class="fa-solid fa-battery-full" style="font-size:12px;"></i>
+          </div>
+        </div>
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <iframe src="home.html" title="上传页" style="padding-top:34px;"></iframe>
+        </div>
+        <!-- Home indicator -->
+        <div style="margin-top:10px;display:flex;justify-content:center;">
+          <div style="width:120px;height:5px;background:rgba(255,255,255,.3);border-radius:999px;"></div>
+        </div>
+      </div>
+      <div class="page-label">Page 1 · 上传页</div>
+      <div class="page-desc">选图 · 预览缩略图 · 开始识别</div>
+    </div>
+
+    <!-- Page 2: Result -->
+    <div>
+      <div class="phone-shell">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px 10px;color:white;font-size:11px;font-weight:600;">
+          <span>9:41</span>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <i class="fa-solid fa-signal" style="font-size:12px;"></i>
+            <i class="fa-solid fa-wifi" style="font-size:12px;"></i>
+            <i class="fa-solid fa-battery-full" style="font-size:12px;"></i>
+          </div>
+        </div>
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <iframe src="result.html" title="结果页" style="padding-top:34px;"></iframe>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:center;">
+          <div style="width:120px;height:5px;background:rgba(255,255,255,.3);border-radius:999px;"></div>
+        </div>
+      </div>
+      <div class="page-label">Page 2 · 结果页</div>
+      <div class="page-desc">识别结果 · 可编辑 · 确认入库</div>
+    </div>
+
+  </div>
+
+  <!-- Design tokens legend -->
+  <div style="max-width:900px;margin:0 auto 48px;padding:0 32px;">
+    <div style="background:white;border-radius:16px;padding:24px;border:1px solid #e7e5e4;">
+      <p style="font-size:12px;font-weight:700;color:#a8a29e;letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px;">设计规范</p>
+      <div style="display:flex;gap:32px;flex-wrap:wrap;">
+        <div>
+          <p style="font-size:11px;color:#a8a29e;margin-bottom:8px;">主色调</p>
+          <div style="display:flex;gap:6px;">
+            <div style="width:28px;height:28px;border-radius:6px;background:#fdf8f0;border:1px solid #e7e5e4;" title="shelf-50"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#faefd9;" title="shelf-100"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#f5d9a8;" title="shelf-200"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#d97706;" title="shelf-500"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#b45309;" title="shelf-600"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#92400e;" title="shelf-700"></div>
+          </div>
+        </div>
+        <div>
+          <p style="font-size:11px;color:#a8a29e;margin-bottom:8px;">文字色</p>
+          <div style="display:flex;gap:6px;">
+            <div style="width:28px;height:28px;border-radius:6px;background:#1c1917;" title="ink"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#78716c;" title="ink-muted"></div>
+            <div style="width:28px;height:28px;border-radius:6px;background:#a8a29e;" title="ink-light"></div>
+          </div>
+        </div>
+        <div>
+          <p style="font-size:11px;color:#a8a29e;margin-bottom:8px;">圆角</p>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <div style="width:28px;height:28px;border-radius:8px;background:#f5f5f4;border:1px solid #e7e5e4;"></div>
+            <div style="width:28px;height:28px;border-radius:12px;background:#f5f5f4;border:1px solid #e7e5e4;"></div>
+            <div style="width:28px;height:28px;border-radius:999px;background:#f5f5f4;border:1px solid #e7e5e4;"></div>
+          </div>
+        </div>
+        <div>
+          <p style="font-size:11px;color:#a8a29e;margin-bottom:8px;">字体</p>
+          <p style="font-size:13px;color:#1c1917;">-apple-system · PingFang SC</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
