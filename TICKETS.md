@@ -345,7 +345,6 @@ npx create-next-app@latest love-my-shelf --typescript --tailwind --app --src-dir
 □ T05 image.ts
 □ T06 ai.ts
 □ T07 notion.ts
-□ T08 端到端脚本【里程碑1】
 □ T09 POST /api/process
 □ T10 上传页
 □ T11 结果页

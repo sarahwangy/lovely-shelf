@@ -41,3 +41,26 @@
 
 - **一句话总结：**
   用精心设计的 system prompt 把 Claude 变成"书籍信息提取机器"，锁定它只输出 JSON，再 parse 成 TypeScript 类型安全的对象。
+
+---
+
+### T07 - Notion 写入函数
+
+- **学到的核心概念：**
+  - `as const` + `(typeof X)[number]`：从数组自动派生联合类型，改预设选项只改数组，类型自动跟着变
+  - 计算属性名 `[NOTION_FIELDS.title]`：用变量做对象的 key，字段名改动只需改一处
+  - Notion 文件上传是两步：先 POST 拿上传地址，再 PUT 发图片内容（SDK 类型不支持，用 fetch 直调）
+
+- **用到的关键 API/函数：**
+  - `notion.pages.create({ parent, properties })`：在数据库里创建一行
+  - `notion.databases.retrieve()`：查询数据库字段结构（调试用）
+  - `CreatePageParameters["properties"]`：从 SDK 导入 properties 的正确类型
+
+- **容易踩的坑：**
+  - Title 字段格式是 `{ title: [{ text: { content } }] }`，和普通 Text 不一样
+  - 普通文本字段的 API key 是 `rich_text`，不是 `text`
+  - `NOTION_DATABASE_ID` 要填 URL 里 `?v=` 前面那段，不是整个 URL，也不是 `?v=` 后面的视图 ID
+  - `fetch` 的 body 不接受 Node.js `Buffer`，需要转成 `new Uint8Array(buffer)`
+
+- **一句话总结：**
+  通过字段映射常量 + 计算属性名，让 Notion 写入代码既类型安全又易维护，字段名改动只需改一处。
