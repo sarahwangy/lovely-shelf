@@ -43,25 +43,50 @@ export default function Home() {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
   }, []);
 
-  // HEIC → JPEG 转换：动态 import 确保只在浏览器里跑（SSR 阶段没有这个库）
+  // HEIC → JPEG 转换，两道保险：
+  // 方法1：heic2any（适合部分非 HEVC 编码的 HEIC）
+  // 方法2：浏览器 Canvas 解码（Safari 原生支持 HEVC，是 iPhone 用户的主力方案）
   const convertIfHeic = async (file: File): Promise<File> => {
+    const name = file.name.toLowerCase();
     const isHeic =
       file.type === "image/heic" ||
       file.type === "image/heif" ||
-      file.name.toLowerCase().endsWith(".heic") ||
-      file.name.toLowerCase().endsWith(".heif");
+      name.endsWith(".heic") ||
+      name.endsWith(".heif");
 
     if (!isHeic) return file;
 
+    const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
+
+    // 方法1：heic2any（动态 import，用到时才加载）
     try {
-      // dynamic import：用到时才加载，不增加首屏 JS 包体积
       const heic2any = (await import("heic2any")).default;
       const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
       const jpeg = Array.isArray(result) ? result[0] : result;
-      // 把转换后的 Blob 包成 File，保留文件名（改扩展名）
-      return new File([jpeg], file.name.replace(/\.heic$/i, ".jpg"), { type: "image/jpeg" });
+      return new File([jpeg], jpegName, { type: "image/jpeg" });
     } catch {
-      // 转换失败时原样返回，让后端再试一次（多一道保险）
+      // 方法1 失败（HEVC 编码的 iPhone HEIC 会到这里），继续尝试方法2
+    }
+
+    // 方法2：Canvas 解码
+    // Safari 原生支持解码 HEVC HEIC，createImageBitmap 能直接读，再 toBlob 导出 JPEG
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+          "image/jpeg",
+          0.9
+        )
+      );
+      return new File([blob], jpegName, { type: "image/jpeg" });
+    } catch {
+      // 两种方法都失败（非 Safari 浏览器 + HEVC 编码），返回原文件
+      // processOne 会检测到还是 HEIC 并给用户友好提示
       return file;
     }
   };
