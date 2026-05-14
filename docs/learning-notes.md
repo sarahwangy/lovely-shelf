@@ -230,3 +230,31 @@
 
 - **一句话总结：**
   HEIC 转码放前端做比放后端更可靠——浏览器原生支持解码，不依赖服务器环境，转完再发给后端只是普通 JPEG。
+
+---
+
+### T15 - 重复检测
+
+- **学到的核心概念：**
+  - SDK breaking change 的排查方式：`Object.keys(client.databases)` 直接看实例有哪些方法，比翻文档快——Notion SDK v5 把 `databases.query` 移到了 `dataSources.query`，参数名也从 `database_id` 改为 `data_source_id`
+  - `page_size: 1` 性能优化：查重只需知道"有没有"，不需要全量结果，找到一条就停，省流量省时间
+  - 在哪一步查重很重要：必须在 AI 识别完（拿到书名+作者）之后、Notion 写入之前，太早没有数据，太晚已经写进去了
+
+- **用到的关键 API/函数：**
+  - `notion.dataSources.query({ data_source_id, filter: { and: [...] }, page_size: 1 })`：组合过滤器查询
+  - `filter: { and: [条件1, 条件2] }`：Notion 的 AND 筛选，书名+作者都匹配才算重复
+  - `res.results.length === 0`：判断是否有查询结果
+
+- **容易踩的坑：**
+  - SDK 版本升级可能有 breaking change：不要直接套老教程的 API 路径，先 `console.log(Object.keys(client))` 确认
+  - 查重只按"书名+作者"匹配，同名不同作者不算重复，同作者不同书名也不算——这个逻辑要和 Notion 里的数据保持一致
+  - 已存在的旧数据（含错误格式）不会自动修复，需要手动在 Notion 里处理
+
+- **同期修复的 Bug：gender/country 字段不一致**
+  - 现象：Notion 里有的是"男/女"，有的是"male/female"
+  - 原因：system prompt 里 `"作者性别或null"` 没有给枚举，Claude 根据书的语言自由发挥
+  - 修法：改为 `"男 或 女 或 null"`，country 也给出预设 8 个国家让 Claude 从中选
+  - 原则：**能给枚举就给枚举，不要依赖 AI 自己决定格式**
+
+- **一句话总结：**
+  重复检测的核心是"在正确的时机查一次 Notion"，配合 `page_size: 1` 做到最小代价的存在性判断。

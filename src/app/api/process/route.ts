@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
-import { uploadFileToNotion, createBookPage } from "@/lib/notion";
+import { uploadFileToNotion, createBookPage, findDuplicateBook } from "@/lib/notion";
 import type { BookInfo } from "@/types/book";
 
 // Next.js App Router 的 Route Handler：
@@ -41,15 +41,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 第三步：上传封面到 Notion
+    // 第三步：查重（识别完就查，写入前）
+    const existingUrl = await findDuplicateBook(bookInfo.title, bookInfo.author);
+    if (existingUrl) {
+      // 已存在：跳过写入，告诉前端"重复"
+      return NextResponse.json({
+        success: true,
+        isDuplicate: true,
+        bookInfo,
+        pageUrl: existingUrl,
+      });
+    }
+
+    // 第四步：上传封面到 Notion
     const fileUploadId = await uploadFileToNotion(jpegBuffer, filename);
 
-    // 第四步：写入 Notion 数据库
+    // 第五步：写入 Notion 数据库
     const { pageUrl } = await createBookPage(bookInfo, fileUploadId, filename);
 
     // 成功：返回识别结果 + Notion 链接
     return NextResponse.json({
       success: true,
+      isDuplicate: false,
       bookInfo,
       pageUrl,
     });

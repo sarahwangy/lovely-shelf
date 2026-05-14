@@ -17,8 +17,8 @@ const SYSTEM_PROMPT = `你是一个专业的图书信息识别助手。
   "title": "书名主标题",
   "subtitle": "副标题或null",
   "author": "作者名，多作者用 & 分隔",
-  "gender": "作者性别或null",
-  "country": "作者国籍或null",
+  "gender": "男 或 女 或 null",
+  "country": "只能从以下选项选一个，或填 null：澳大利亚、英国、美国、新西兰、南非、加拿大、中国、日本",
   "genres": ["类型1", "类型2"],
   "description": "一句话描述这本书的主题"
 }

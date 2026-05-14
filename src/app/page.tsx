@@ -21,7 +21,7 @@ type FileItem = {
 export type ProcessResult = {
   filename: string;
   previewUrl: string;
-  status: "success" | "error";
+  status: "success" | "duplicate" | "error"; // duplicate = 书库已有，跳过写入
   bookInfo?: BookInfo;
   pageUrl?: string;
   error?: string;
@@ -116,7 +116,17 @@ export default function Home() {
         const res = await fetch("/api/process", { method: "POST", body: formData });
         const data = await res.json();
 
-        if (data.success) {
+        if (data.success && data.isDuplicate) {
+          // 重复：书库已有，跳过写入
+          updateItem(item.id, { status: "success", bookInfo: data.bookInfo, pageUrl: data.pageUrl });
+          collectedResults[resultIndex] = {
+            filename: item.file.name,
+            previewUrl: item.previewUrl,
+            status: "duplicate",
+            bookInfo: data.bookInfo,
+            pageUrl: data.pageUrl,
+          };
+        } else if (data.success) {
           updateItem(item.id, { status: "success", bookInfo: data.bookInfo, pageUrl: data.pageUrl });
           collectedResults[resultIndex] = {
             filename: item.file.name,

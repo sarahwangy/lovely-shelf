@@ -21,6 +21,7 @@ export default function ResultPage() {
   }, []);
 
   const successCount = results.filter((r) => r.status === "success").length;
+  const duplicateCount = results.filter((r) => r.status === "duplicate").length;
   const errorCount = results.filter((r) => r.status === "error").length;
 
   // 没有数据时（直接访问 /result 或 localStorage 被清空）
@@ -53,7 +54,12 @@ export default function ResultPage() {
         <div className="flex items-center gap-3 text-xs">
           {successCount > 0 && (
             <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
-              ✓ {successCount} 张成功
+              ✓ {successCount} 张入库
+            </span>
+          )}
+          {duplicateCount > 0 && (
+            <span className="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-medium">
+              ⚠ {duplicateCount} 张重复
             </span>
           )}
           {errorCount > 0 && (
@@ -113,14 +119,38 @@ function BookCard({ result }: { result: ProcessResult }) {
   if (status === "error") {
     return (
       <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-4 flex items-start gap-4">
-        {/* 封面区 - 失败时显示占位 */}
         <div className="w-16 shrink-0 aspect-[3/4] bg-red-50 rounded-xl flex items-center justify-center text-2xl">
           ❌
         </div>
         <div className="flex-1 min-w-0 py-1">
           <p className="text-sm font-medium text-ink truncate">{filename}</p>
-          {/* line-clamp-3 截断长报错，手机屏幕不会被超长文字撑开 */}
           <p className="text-xs text-red-500 mt-1 line-clamp-3">{error ?? "识别失败"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "duplicate") {
+    return (
+      <div className="bg-white rounded-2xl border border-amber-100 shadow-sm p-4 flex items-start gap-4">
+        <div className="w-16 shrink-0 aspect-[3/4] bg-amber-50 rounded-xl flex items-center justify-center text-2xl">
+          📖
+        </div>
+        <div className="flex-1 min-w-0 py-1">
+          <p className="text-sm font-medium text-ink truncate">{bookInfo?.title ?? filename}</p>
+          <p className="text-xs text-ink-muted mt-0.5">{bookInfo?.author}</p>
+          <p className="text-xs text-amber-600 mt-1.5 font-medium">已在书库中，跳过入库</p>
+          {pageUrl && (
+            <a
+              href={pageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-shelf-600 hover:text-shelf-700 mt-2 py-1"
+            >
+              <span className="w-4 h-4 bg-shelf-100 rounded flex items-center justify-center text-[10px] shrink-0">N</span>
+              查看已有记录 →
+            </a>
+          )}
         </div>
       </div>
     );

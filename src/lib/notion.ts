@@ -118,3 +118,26 @@ export async function createBookPage(
   const pageUrl = `https://notion.so/${page.id.replace(/-/g, "")}`;
   return { pageId: page.id, pageUrl };
 }
+
+// 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null
+// SDK v5：query 从 notion.databases 移到了 notion.dataSources，参数名也从 database_id 改为 data_source_id
+export async function findDuplicateBook(
+  title: string,
+  author: string
+): Promise<string | null> {
+  const res = await notion.dataSources.query({
+    data_source_id: DATABASE_ID,
+    // and 条件：书名 AND 作者都匹配才算重复
+    filter: {
+      and: [
+        { property: NOTION_FIELDS.title, title: { equals: title } },
+        { property: NOTION_FIELDS.author, rich_text: { equals: author } },
+      ],
+    },
+    page_size: 1, // 只要找到一条就够，不用全量拉
+  });
+
+  if (res.results.length === 0) return null;
+  const pageId = res.results[0].id;
+  return `https://notion.so/${pageId.replace(/-/g, "")}`;
+}
