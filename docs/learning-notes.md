@@ -105,3 +105,27 @@
 
 - **一句话总结：**
   Route Handler 是 lib/ 工具函数和前端之间的"服务员"，自己不做业务逻辑，只负责接单、转发、返回结果。
+
+---
+
+### T10 - 上传页 src/app/page.tsx
+
+- **学到的核心概念：**
+  - `"use client"`：告诉 Next.js 这个组件在浏览器运行，默认所有组件在服务端渲染，有交互就必须加这个
+  - `useState`：React 状态管理，每次 state 变化会重新渲染组件，是前端响应式的基础
+  - `useCallback`：包住函数防止每次渲染都重新创建，性能优化的行业惯例
+  - `URL.createObjectURL(file)`：把本地文件变成临时预览 URL，不上传到服务器，浏览器内存里的魔法
+
+- **用到的关键 API/函数：**
+  - `useRef`：拿到 DOM 元素（这里用来触发隐藏的 file input 点击）
+  - `useRouter` + `router.push("/result")`：Next.js 的客户端路由跳转
+  - `localStorage.setItem(key, JSON.stringify(data))`：跨页面传递数据，比 URL 参数适合传大对象
+  - `FormData.append("image", file)`：构造 multipart 请求体，和后端 route.ts 的字段名对应
+
+- **容易踩的坑：**
+  - 拖拽区域的 `dragover` 事件必须 `e.preventDefault()`，否则 `drop` 事件不会触发（浏览器默认行为是拒绝拖入）
+  - `setItems` 用函数式更新 `prev => ...` 而不是直接读 `items`，避免异步循环里读到过时的 state
+  - 文件 input 的 `onChange` 要重置 `e.target.value = ""`，否则选同一张图第二次不触发
+
+- **一句话总结：**
+  上传页是纯前端交互：文件选择→本地预览→逐张调用 API→实时更新状态→存结果跳转，完整体现了 React 状态驱动 UI 的思维方式。
