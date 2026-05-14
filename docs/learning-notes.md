@@ -208,3 +208,25 @@
 
 - **一句话总结：**
   `Promise.all` + 分批切片，把串行"排队等候"变成并发"批量处理"，理论上速度提升倍数 ≈ 批次大小（3 张并发约快 3 倍）。
+
+---
+
+### T14 - HEIC 格式支持（前端转码）
+
+- **学到的核心概念：**
+  - 动态 import（`await import("库名")`）：用到时才把库加载进来，不打进首屏 JS 包——对只有部分用户才用到的功能（比如 HEIC 转换），这是行业标准做法
+  - `Blob` vs `File`：`heic2any` 返回 `Blob`（纯二进制数据），`File` 是 `Blob` 的子类，多了 `name` 和 `type` 属性。`new File([blob], name, { type })` 可以把 Blob 升级成 File
+  - 前端转码 vs 后端转码：HEIC 解码依赖系统级别的 codec（`libheif`），Node.js/Vercel 环境不保证有，放在浏览器端转更稳——浏览器本身就支持解码 HEIC（iOS Safari 原生支持）
+
+- **用到的关键 API/函数：**
+  - `file.type`：MIME 类型，HEIC 是 `"image/heic"` 或 `"image/heif"`；但部分系统上 HEIC 文件的 `type` 是空字符串，所以要同时检查扩展名
+  - `file.name.toLowerCase().endsWith(".heic")`：扩展名检测，兜底 MIME 类型为空的情况
+  - `Array.isArray(result)`：`heic2any` 对 Live Photo 返回数组、普通照片返回单个 Blob，两种情况都要处理
+
+- **容易踩的坑：**
+  - HEIC 文件在 Windows/Android 上 `file.type` 可能是空字符串（系统不识别这个 MIME 类型），所以必须同时判断扩展名
+  - `heic2any` 是浏览器端库，不能在 Node.js 里用（SSR 会报错）——用 `dynamic import` 确保只在浏览器执行
+  - `useCallback` 内部用了 `convertIfHeic`，但 `convertIfHeic` 没放在 `useCallback` 的依赖数组里——加了 `eslint-disable` 注释，因为 `convertIfHeic` 是纯函数，不依赖任何 state，引用永远不变
+
+- **一句话总结：**
+  HEIC 转码放前端做比放后端更可靠——浏览器原生支持解码，不依赖服务器环境，转完再发给后端只是普通 JPEG。

@@ -43,16 +43,41 @@ export default function Home() {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
   }, []);
 
+  // HEIC → JPEG 转换：动态 import 确保只在浏览器里跑（SSR 阶段没有这个库）
+  const convertIfHeic = async (file: File): Promise<File> => {
+    const isHeic =
+      file.type === "image/heic" ||
+      file.type === "image/heif" ||
+      file.name.toLowerCase().endsWith(".heic") ||
+      file.name.toLowerCase().endsWith(".heif");
+
+    if (!isHeic) return file;
+
+    try {
+      // dynamic import：用到时才加载，不增加首屏 JS 包体积
+      const heic2any = (await import("heic2any")).default;
+      const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+      const jpeg = Array.isArray(result) ? result[0] : result;
+      // 把转换后的 Blob 包成 File，保留文件名（改扩展名）
+      return new File([jpeg], file.name.replace(/\.heic$/i, ".jpg"), { type: "image/jpeg" });
+    } catch {
+      // 转换失败时原样返回，让后端再试一次（多一道保险）
+      return file;
+    }
+  };
+
   // 把选中的 File 对象转成 FileItem，生成预览 URL
-  const addFiles = useCallback((files: FileList | File[]) => {
-    const newItems: FileItem[] = Array.from(files).map((file) => ({
+  // 改成 async：HEIC 转换是异步的，要等转完再生成预览
+  const addFiles = useCallback(async (files: FileList | File[]) => {
+    const converted = await Promise.all(Array.from(files).map(convertIfHeic));
+    const newItems: FileItem[] = converted.map((file) => ({
       id: `${file.name}-${Date.now()}-${Math.random()}`,
       file,
       previewUrl: URL.createObjectURL(file), // 浏览器内存里的临时 URL，不上传到服务器
       status: "pending",
     }));
     setItems((prev) => [...prev, ...newItems]);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) addFiles(e.target.files);
