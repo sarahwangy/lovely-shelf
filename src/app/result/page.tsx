@@ -119,7 +119,8 @@ function BookCard({ result }: { result: ProcessResult }) {
         </div>
         <div className="flex-1 min-w-0 py-1">
           <p className="text-sm font-medium text-ink truncate">{filename}</p>
-          <p className="text-xs text-red-500 mt-1">{error ?? "识别失败"}</p>
+          {/* line-clamp-3 截断长报错，手机屏幕不会被超长文字撑开 */}
+          <p className="text-xs text-red-500 mt-1 line-clamp-3">{error ?? "识别失败"}</p>
         </div>
       </div>
     );
@@ -180,13 +181,14 @@ function BookCard({ result }: { result: ProcessResult }) {
         </p>
 
         {pageUrl && (
+          // py-2 把点击区域撑高到 ~32px，符合 Apple HIG 的最小触摸目标建议
           <a
             href={pageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-shelf-600 hover:text-shelf-700 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-shelf-600 hover:text-shelf-700 active:text-shelf-800 transition-colors py-2"
           >
-            <span className="w-4 h-4 bg-shelf-100 rounded flex items-center justify-center text-[10px]">N</span>
+            <span className="w-5 h-5 bg-shelf-100 rounded flex items-center justify-center text-xs shrink-0">N</span>
             在 Notion 中查看
             <span className="text-shelf-400">→</span>
           </a>

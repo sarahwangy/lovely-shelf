@@ -31,6 +31,12 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
+/* iPhone 刘海屏安全区：底部内容不被 Home Bar 遮住
+   env(safe-area-inset-bottom) 是 iOS Safari 提供的 CSS 变量，桌面浏览器值为 0 */
+main {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
 /* 拖拽区虚线背景 */
 .drop-zone-pattern {
   background: repeating-linear-gradient(

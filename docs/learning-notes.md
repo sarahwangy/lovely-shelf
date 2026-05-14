@@ -164,3 +164,25 @@
   - 修法 1：system prompt 明确禁止字符串值内出现英文双引号
   - 修法 2：用 `rawText.match(/\{[\s\S]*\}/)` 贪婪提取 JSON 对象，比正则替换代码块标记更健壮
   - 行业常识：AI 输出永远不要 100% 信任格式，解析层要做防御，`[\s\S]*` 是匹配"包括换行符在内的所有字符"的惯用写法
+
+---
+
+### T12 - 基础样式 + 移动端适配
+
+- **学到的核心概念：**
+  - `viewport` meta 标签：告诉手机浏览器"按设备真实宽度渲染，不要缩放"，是所有移动端 Web 的必备配置
+  - `safe-area-inset`：iPhone X 之后有刘海和 Home Bar，`env(safe-area-inset-bottom)` 是 iOS Safari 提供的 CSS 变量，用来让内容避开底部遮挡区
+  - `viewportFit: "cover"`：配合 safe-area-inset 使用，让页面先铺满全屏（包括刘海区），再用 padding 把内容推回安全区
+
+- **用到的关键 API/函数：**
+  - Next.js `export const viewport: Viewport`：Next.js 13+ 推荐的 viewport 配置方式，比在 `<head>` 里手写 `<meta>` 更类型安全
+  - `calc(1.5rem + env(safe-area-inset-bottom))`：用 `calc()` 把固定间距和动态安全区叠加，桌面端 `env()` 值为 0 所以不影响桌面布局
+  - Tailwind `line-clamp-3`：CSS 多行截断，底层是 `-webkit-line-clamp`，Tailwind 封装后一个 class 搞定
+
+- **容易踩的坑：**
+  - 手机触摸目标至少要 44px（Apple HIG）/48dp（Android），小于这个尺寸用户点不准——用 `py-2` / `p-3` 撑开点击区，不是靠加大字号
+  - `viewportFit: "cover"` 必须配合 `safe-area-inset` 一起用，单独用会让内容被刘海遮住
+  - 测移动端最快方法：Chrome DevTools → 左上角手机图标切设备视图，不用每次真机测
+
+- **一句话总结：**
+  移动端适配的核心是两件事：告诉浏览器"按真实尺寸渲染"（viewport），以及"把内容推离系统 UI 遮挡区"（safe-area-inset）。
