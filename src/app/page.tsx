@@ -110,6 +110,19 @@ export default function Home() {
     // 单张处理逻辑，抽成函数方便并发调用
     const processOne = async (item: FileItem, resultIndex: number) => {
       updateItem(item.id, { status: "processing" });
+
+      // 如果文件还是 HEIC，说明前端 heic2any 转换失败，直接告知用户，不发给后端
+      // （后端 Vercel 环境的 sharp 也没有 HEVC codec，发过去也会报同样的错）
+      const name = item.file.name.toLowerCase();
+      if (name.endsWith(".heic") || name.endsWith(".heif") || item.file.type === "image/heic" || item.file.type === "image/heif") {
+        const msg = "HEIC 转换失败。请在 iPhone「设置 → 相机 → 格式」选「兼容性最佳」后重新拍照上传 JPG";
+        updateItem(item.id, { status: "error", error: msg });
+        collectedResults[resultIndex] = { filename: item.file.name, previewUrl: item.previewUrl, status: "error", error: msg };
+        completedCount += 1;
+        setCurrentIndex(completedCount);
+        return;
+      }
+
       try {
         const formData = new FormData();
         formData.append("image", item.file);
