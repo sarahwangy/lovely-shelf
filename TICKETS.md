@@ -301,6 +301,369 @@ T20：集成 Google Books API（用书名+作者反查）
   - 给 Vercel 项目绑定自定义域名（可选）
 - **DoD**：80% 以上的图能成功跑完；README 完整；可发简历
 
+🟣 阶段 5：互动反馈（建议 1-2 天，4-6 小时）
+
+目标：用户每入一本书，前端立刻有"惊喜反馈"——"这是你第 23 本回忆录！"，让书库变得有"成就感"。后续做 Dashboard 把书库整体可视化。
+
+T20：入库后返回同类书统计 + 前端提示
+
+前置：T11（结果页已存在）、T16（错误处理）
+预计耗时：2 小时
+任务：
+
+后端改造：
+
+文件：src/lib/notion.ts 新增 async function countBooksByGenre(genre: string): Promise<number>
+
+用 notion.databases.query + filter: { property: "类型 Label", multi_select: { contains: genre } }
+如果数据量大，可用 page_size: 100 + 翻页（MVP 阶段 < 100 本就一次查完）
+
+
+改 src/app/api/process/route.ts：在成功 createBookPage 之后，对返回的 info.genre[0]（取主类型）调一次 countBooksByGenre
+返回 JSON 扩展：
+
+
+
+
+
+ts      {
+        success: true,
+        bookInfo,
+        pageUrl,
+        stats: {
+          primaryGenre: "回忆录",
+          countInGenre: 23,
+          message: "发现你这是第 23 本回忆录类的书～"
+        }
+      }
+
+前端改造：
+
+结果页 src/app/result/... 或主页的成功态下，在 Notion 链接旁加一个高亮提示卡片
+文案模板：已添加到你的 Notion 书库 ✅\n发现你这是第 {count} 本 {genre} 类的书～
+视觉建议：emoji + 渐变色背景，让"成就感"出来
+
+
+DoD：
+
+上传任意一本书，结果页能看到"这是第 X 本 XX 类的书"
+手动在 Notion 里删一本后再上传，计数能正确减少
+
+
+
+
+T21：同类书推荐（最多 5 本）
+
+前置：T20
+预计耗时：2 小时
+任务：
+
+后端：
+
+文件：src/lib/notion.ts 新增 async function listBooksByGenre(genre: string, excludePageId: string, limit = 5): Promise<BookSummary[]>
+BookSummary 类型：{ pageId: string; title: string; subtitle: string | null; author: string; country: string | null; genres: string[]; description: string; coverUrl: string | null; notionUrl: string }
+取最近创建的 N 本（按 created_time desc，过滤掉刚入库那本）
+
+
+改 /api/process 在 stats 下加 recommendations: BookSummary[]
+前端：
+
+提示卡片下方加一个"📚 你的同类书架"区块
+横向滚动或网格，每张卡片显示封面缩略图 + 书名 + 作者
+点击卡片 → 在网页内弹出书籍详情 modal（使用 T22.5 中的 <BookDetailModal> 组件），展示该书所有字段；modal 底部保留一个"在 Notion 中打开 ↗"小链接作为兜底
+不要在新标签打开 Notion，让用户保持在网页内浏览
+
+
+边界情况：如果同类只有 1 本（就是刚入库的这本），区块整体隐藏
+
+
+DoD：
+
+上传一本回忆录，下方能看到 3-5 本之前入库的回忆录卡片
+点击任意卡片，能在网页内看到完整书籍信息（不跳转）
+第一次入某类书时，推荐区不显示，文案改为"这是你的第 1 本 XX 类的书 🎉"
+
+
+
+
+T22：洞察看板 /dashboard（不是 Notion 复刻，是"书架洞察 + 公开作品页"）
+
+前置：T21、T22.5
+预计耗时：5 小时
+设计理念：
+
+Notion 已经能"浏览/编辑/筛选"书库，我们的 Dashboard 不重复造这些
+我们的 Dashboard 做 Notion 做不好的事：可视化洞察、多级钻取、可分享、像 Spotify Wrapped 的成就感
+整页设计成"我的书架洞察"，可以作为简历附 demo 链接
+
+
+任务：
+
+文件：src/app/dashboard/page.tsx + src/app/api/stats/route.ts + src/app/dashboard/genre/[name]/page.tsx
+后端 /api/stats：
+
+全量拉取 Notion Database（带翻页），返回：
+
+
+
+
+
+ts      {
+        total: 88,
+        genres: [{ name: "回忆录", count: 23, percentage: 26.1 }, ...],
+        topGenres: [...],                    // 占比前 3 的类型
+        countries: [{ name: "澳大利亚", count: 12 }, ...],
+        thisYear: { total: 45, byMonth: [3, 5, 7, ...] },  // 今年入库数 + 月度分布
+        recentActivity: [{ date: "2026-05-12", count: 3 }, ...],  // 最近 30 天每日入库
+        latest: BookSummary[],               // 最近 5 本入库
+      }
+- 内存缓存 60 秒（避免每次刷新都打 Notion API）
+
+前端 - 顶部 Hero 区：
+
+大字："你的书架里有 88 本书"
+副标："今年入库 45 本 · 最爱的类型是回忆录"
+可截图分享（设计成 16:9，方便发朋友圈）
+
+
+前端 - Widget 区（响应式网格）：
+
+🥧 类型占比环形图（主 widget，占两列）
+
+用 recharts 的 PieChart / Donut
+点击切片或图例 → 跳 /dashboard/genre/[name]（封面墙）
+
+
+🏆 Top 3 类型卡片
+
+大数字 + 类型名 + 占比，emoji 区分
+
+
+🌍 作者国家分布
+
+简单条形图或国家 chip 列表（带国旗 emoji），点击 chip → 弹列表
+加分项：用 react-simple-maps 做小地图（可选）
+
+
+📅 最近 30 天入库热力图
+
+类似 GitHub 贡献图的小色块
+每天一个格子，颜色深浅 = 当天入库数
+
+
+📈 今年月度趋势
+
+12 个月柱状图
+
+
+🆕 最近入库
+
+横向滚动 5 本，点击 → 弹 <BookDetailModal>（复用 T22.5）
+
+
+
+
+前端 - 子页 /dashboard/genre/[name]：
+
+顶部："回忆录 · 23 本 · 占书库 26.1%"
+网格封面墙（封面 + 书名 + 作者）
+点击任意一本 → 弹 <BookDetailModal>（不跳 Notion）
+
+
+顶部导航加 "📊 我的书架" 入口
+公开分享准备：
+
+Dashboard 页支持 ?public=true 参数：隐藏编辑/上传入口，只读
+加 OG 标签，分享到 Twitter/微信能预览
+
+
+DoD：
+
+/dashboard 能看到 6 个 widget，全部数据来自 Notion 实时
+点击饼图任一切片 → 进入封面墙 → 点书 → 弹 modal 看详情，全过程不跳 Notion
+手机端响应式：widget 在窄屏单列堆叠、不溢出
+Dashboard 页可截图，发出去像 Spotify Wrapped 一样有"看头"
+
+
+
+
+T22.5：书籍详情 Modal 组件 + 编辑回写
+
+前置：T21（或与 T22 并行）
+预计耗时：3 小时
+任务：
+
+目标：做一个全站通用的 <BookDetailModal>，让用户在网页内查看 + 编辑任何一本书，不用跳 Notion
+后端：
+
+文件：src/lib/notion.ts 新增：
+
+async function getBookByPageId(pageId: string): Promise<BookDetail> — 拉单本完整信息
+async function updateBookPage(pageId: string, patch: Partial<BookInfo>): Promise<void> — 字段回写
+
+
+新 API 路由：
+
+GET /api/books/[pageId] — 取单本详情
+PATCH /api/books/[pageId] — 局部更新字段
+
+
+后端做基本字段校验（类型 label 必须在预设列表内、书名非空等）
+
+
+前端组件：
+
+文件：src/components/BookDetailModal.tsx
+Props：{ pageId: string; open: boolean; onClose: () => void; onUpdated?: (book: BookDetail) => void }
+视觉：
+
+左：封面大图
+右：书名（大字标题）、副标、作者、国家、类型 label（chip）、描述（多行）
+顶部右上角：✏️ 编辑按钮 → 切换到编辑模式（字段变 input/textarea/multi-select）
+编辑模式下底部"保存" / "取消"
+底部最左：小灰字链接"在 Notion 中打开 ↗"（兜底）
+
+
+移动端：modal 全屏展示（max-h-dvh overflow-auto），不要让 iOS 把内容截掉
+
+
+接入点：
+
+T21 的同类书卡片点击 → 弹这个 modal
+T22 的 Dashboard 封面墙点击 → 弹这个 modal
+T11 的结果页"刚入库这本"卡片旁也加一个"查看/编辑详情"按钮 → 弹这个 modal
+
+
+
+
+DoD：
+
+点击任何一张书卡片都能弹出详情 modal
+在 modal 内修改书名/类型后保存，30 秒内能在 Notion 看到更新（也能看到 Dashboard 计数变化）
+关闭 modal 不刷新页面、保持当前位置
+iPhone Safari 上 modal 不溢出、能滚动看完
+
+
+
+
+🔵 阶段 6：Agent 化（建议 2-3 天，6-8 小时）
+
+目标：把后端从"固定 if/else 流水线"重构为"Agent + Tool Use"。AI 自己决定何时调用哪个工具、如何处理异常、何时请用户确认。这是简历上能写"用 Anthropic Tool Use 构建 Agent"的关键。
+
+T23：后端 Agent 重构（Anthropic Tool Use）
+
+前置：T22
+预计耗时：6-8 小时（这是本阶段单个最大的 ticket，建议拆 2 天）
+任务：
+
+设计：
+
+文件：src/lib/agent.ts
+定义工具（Anthropic tools 参数）：
+
+preprocess_image — 图片预处理
+recognize_book_from_image — 从图片提取 BookInfo
+search_google_books — （可选）用书名+作者查 Google Books 补全信息
+check_duplicate_in_notion — 查 Notion 是否已有同书
+upload_cover_to_notion — 上传封面文件
+create_notion_page — 创建 Notion 行
+count_books_by_genre — 同类书计数
+list_books_by_genre — 同类书列表
+ask_user_for_confirmation — 当 AI 不确定时要求用户确认（前端弹一个 modal）
+
+
+Agent 循环：while (response.stop_reason === 'tool_use')，按 SDK 规范处理
+
+
+改造路径：
+
+保留旧的 /api/process 作为 fallback，新加 /api/agent 走 Agent 流程
+前端加一个 feature flag（环境变量 NEXT_PUBLIC_USE_AGENT=true）切换
+
+
+可观测性：
+
+每个工具调用打日志：[agent] step 3: recognize_book_from_image → 1.2s → ok
+把 Agent 的 thinking 步骤可选地返回给前端展示（"AI 正在识别封面..."）
+
+
+Prompt 工程：
+
+System prompt 明确说明：识别不清楚时调 search_google_books 补全；发现重复时调 ask_user_for_confirmation；最后才入库
+
+
+
+
+DoD：
+
+/api/agent 能完整跑完一张图的入库流程
+故意上传一张模糊的图，能看到 Agent 自动调用 search_google_books 补全
+上传重复书时，前端能收到"已存在，是否仍要入库"的询问
+终端日志能完整看到 Agent 的每一步决策
+
+
+
+
+🟣 阶段 7：对话式 UI（建议 2 天，5-7 小时）
+
+目标：在 Web 上加一个对话窗口，用户可以"和 AI 助手聊着把书入库"。流式输出让交互感更强。手机也能用。
+
+T24：聊天界面 + 流式响应
+
+前置：T23
+预计耗时：5-7 小时
+任务：
+
+后端：
+
+文件：src/app/api/chat/route.ts
+用 Anthropic SDK 的 stream: true，按 SSE 或 ReadableStream 返回
+支持多轮对话（前端把历史 messages 传回）
+工具调用复用 T23 的工具集
+
+
+前端：
+
+新页面 src/app/chat/page.tsx
+UI：类似 ChatGPT 的对话气泡 + 底部输入框 + 文件上传按钮
+流式 token 打字机效果
+用户消息支持文本 + 图片附件
+助手回复中嵌入"已入库"卡片（直接用 T20-T21 的组件）
+工具调用过程展示为"思考中"动画（折叠的"AI 调用了 X 工具"）
+
+
+示例对话：
+
+
+
+    用户：[上传 3 张图]
+    AI：好的，我来识别一下～（流式）
+        [识别中... 3/3]
+        ✅ 已入库 3 本：
+        - 《From Scratch》— 你的第 24 本回忆录
+        - 《Big Feelings》— 你的第 16 本心理相关
+        - 《Being You》— 你的第 1 本科普 🎉
+        要看看你之前的回忆录吗？
+    用户：好啊
+    AI：[展示 5 本同类书卡片]
+
+移动端：
+
+用 100dvh 处理 iOS 键盘弹起问题
+输入框 sticky 在底部
+
+
+DoD：
+
+桌面和手机都能流畅对话
+上传图片有打字机式的"识别中→识别完成"过程
+一次对话内可以连续入多本书，AI 记得上下文（如"再给我看看回忆录"）
+项目可以放简历，能写"基于 Anthropic Tool Use + Streaming 的对话式 Agent"
+
+
+
+
+
 ---
 
 ## 🎯 推荐起步顺序（直接给 Claude Code 用）
@@ -357,6 +720,8 @@ npx create-next-app@latest love-my-shelf --typescript --tailwind --app --src-dir
 □ T18 部署 Vercel【里程碑3 - 上线】
 □ T19 实测 + 收尾【里程碑4 - 可放简历】
 ```
+
+
 
 ---
 
