@@ -95,12 +95,17 @@ export default function Home() {
   // 改成 async：HEIC 转换是异步的，要等转完再生成预览
   const addFiles = useCallback(async (files: FileList | File[]) => {
     const converted = await Promise.all(Array.from(files).map(convertIfHeic));
-    const newItems: FileItem[] = converted.map((file) => ({
-      id: `${file.name}-${Date.now()}-${Math.random()}`,
-      file,
-      previewUrl: URL.createObjectURL(file), // 浏览器内存里的临时 URL，不上传到服务器
-      status: "pending",
-    }));
+    const newItems: FileItem[] = converted.map((file) => {
+      const n = file.name.toLowerCase();
+      const isStillHeic = n.endsWith(".heic") || n.endsWith(".heif");
+      return {
+        id: `${file.name}-${Date.now()}-${Math.random()}`,
+        file,
+        // 转换成功 → 正常预览；仍是 HEIC → 空字符串，用占位卡替代破图
+        previewUrl: isStillHeic ? "" : URL.createObjectURL(file),
+        status: "pending",
+      };
+    });
     setItems((prev) => [...prev, ...newItems]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -278,8 +283,17 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               {items.map((item) => (
                 <div key={item.id} className="relative group rounded-xl overflow-hidden aspect-[3/4] bg-stone-100 shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.previewUrl} alt={item.file.name} className="w-full h-full object-cover" />
+                  {item.previewUrl ? (
+                    // 正常预览（JPG/PNG/转换成功的 HEIC）
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.previewUrl} alt={item.file.name} className="w-full h-full object-cover" />
+                  ) : (
+                    // HEIC 转换失败时的占位：不显示破图，显示书本图标
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-shelf-50 gap-2">
+                      <span className="text-4xl">📷</span>
+                      <span className="text-xs text-shelf-500 font-medium">HEIC</span>
+                    </div>
+                  )}
                   {/* hover 时显示删除按钮 */}
                   <button
                     onClick={() => removeItem(item.id)}
@@ -298,7 +312,7 @@ export default function Home() {
                 className="rounded-xl border-2 border-dashed border-shelf-200 aspect-[3/4] flex flex-col items-center justify-center cursor-pointer hover:border-shelf-400 hover:bg-shelf-50 transition-all"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <span className="text-shelf-400 text-xl mb-1">+</span>
+                <span className="text-shelf-400 text-4xl leading-none mb-1">+</span>
                 <span className="text-xs text-shelf-400">继续添加</span>
               </div>
             </div>
