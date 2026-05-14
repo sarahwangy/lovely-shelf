@@ -78,62 +78,69 @@ export default function Home() {
     setProcessing(true);
 
     const pendingItems = items.filter((i) => i.status === "pending");
+    // 用固定长度数组保证结果顺序和原始文件顺序一致
+    const collectedResults: ProcessResult[] = new Array(pendingItems.length);
+    let completedCount = 0;
 
-    // 在循环里直接收集结果，不依赖 items state
-    // 原因：setItems 是异步的，循环结束后直接读 items 拿到的还是旧快照（stale closure）
-    const collectedResults: ProcessResult[] = [];
-
-    for (let i = 0; i < pendingItems.length; i++) {
-      const item = pendingItems[i];
-      setCurrentIndex(i + 1);
+    // 单张处理逻辑，抽成函数方便并发调用
+    const processOne = async (item: FileItem, resultIndex: number) => {
       updateItem(item.id, { status: "processing" });
-
       try {
-        // 用 FormData 把图片发给后端，字段名 "image" 要和 route.ts 里对得上
         const formData = new FormData();
         formData.append("image", item.file);
-
         const res = await fetch("/api/process", { method: "POST", body: formData });
         const data = await res.json();
 
         if (data.success) {
           updateItem(item.id, { status: "success", bookInfo: data.bookInfo, pageUrl: data.pageUrl });
-          collectedResults.push({
+          collectedResults[resultIndex] = {
             filename: item.file.name,
             previewUrl: item.previewUrl,
             status: "success",
             bookInfo: data.bookInfo,
             pageUrl: data.pageUrl,
-          });
+          };
         } else {
           updateItem(item.id, { status: "error", error: data.error });
-          collectedResults.push({
+          collectedResults[resultIndex] = {
             filename: item.file.name,
             previewUrl: item.previewUrl,
             status: "error",
             error: data.error,
-          });
+          };
         }
       } catch {
         updateItem(item.id, { status: "error", error: "网络错误，请重试" });
-        collectedResults.push({
+        collectedResults[resultIndex] = {
           filename: item.file.name,
           previewUrl: item.previewUrl,
           status: "error",
           error: "网络错误，请重试",
-        });
+        };
       }
+      // 完成一张就更新计数，多个并发任务各自触发，互不干扰
+      completedCount += 1;
+      setCurrentIndex(completedCount);
+    };
+
+    // 分批并发：每批最多 3 张同时跑，一批全部完成再开下一批
+    // 为什么是 3：Claude API 有并发限制，太多同时请求会触发 429 限流
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < pendingItems.length; i += BATCH_SIZE) {
+      const batch = pendingItems.slice(i, i + BATCH_SIZE);
+      // Promise.all 让这批图片同时发出请求，等所有都完成再继续
+      await Promise.all(batch.map((item, batchIdx) => processOne(item, i + batchIdx)));
     }
 
     setProcessing(false);
-    // localStorage 是浏览器本地存储，刷新不丢，但关闭浏览器会清空（sessionStorage 才真的关了就没了）
+    // localStorage 是浏览器本地存储，刷新不丢，但关闭浏览器会清空
     localStorage.setItem("lovely-shelf-results", JSON.stringify(collectedResults));
     router.push("/result");
   };
 
-  const processingItem = items.find((i) => i.status === "processing");
+  // currentIndex 现在代表"已完成张数"，进度 = 已完成 / 总数
   const progress = processing && items.length > 0
-    ? Math.round(((currentIndex - 1) / items.filter(i => i.status !== "pending" || processing).length) * 100)
+    ? Math.round((currentIndex / items.length) * 100)
     : 0;
 
   return (
@@ -244,9 +251,14 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="font-semibold text-ink text-sm">
-                    正在识别第 {currentIndex} / {items.length} 张
+                    已完成 {currentIndex} / {items.length} 张
                   </p>
-                  <p className="text-xs text-ink-muted">{processingItem?.file.name}</p>
+                  {/* 并发时显示"正在处理 N 张"，串行时显示具体文件名 */}
+                  <p className="text-xs text-ink-muted">
+                    {items.filter(i => i.status === "processing").length > 1
+                      ? `同时处理 ${items.filter(i => i.status === "processing").length} 张中…`
+                      : items.find(i => i.status === "processing")?.file.name}
+                  </p>
                 </div>
               </div>
               {/* 进度条 */}
