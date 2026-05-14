@@ -120,24 +120,37 @@ export async function createBookPage(
 }
 
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null
-// SDK v5：query 从 notion.databases 移到了 notion.dataSources，参数名也从 database_id 改为 data_source_id
+// SDK v5 的 dataSources.query 需要 data_source_id（不同于 database_id），
+// 直接调 REST API /v1/databases/{id}/query 更稳，和文件上传用同一模式
 export async function findDuplicateBook(
   title: string,
   author: string
 ): Promise<string | null> {
-  const res = await notion.dataSources.query({
-    data_source_id: DATABASE_ID,
-    // and 条件：书名 AND 作者都匹配才算重复
-    filter: {
-      and: [
-        { property: NOTION_FIELDS.title, title: { equals: title } },
-        { property: NOTION_FIELDS.author, rich_text: { equals: author } },
-      ],
+  const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json",
     },
-    page_size: 1, // 只要找到一条就够，不用全量拉
+    body: JSON.stringify({
+      filter: {
+        and: [
+          { property: NOTION_FIELDS.title, title: { equals: title } },
+          { property: NOTION_FIELDS.author, rich_text: { equals: author } },
+        ],
+      },
+      page_size: 1,
+    }),
   });
 
-  if (res.results.length === 0) return null;
-  const pageId = res.results[0].id;
-  return `https://notion.so/${pageId.replace(/-/g, "")}`;
+  if (!res.ok) {
+    // 查重失败不阻断主流程，打日志后当作"未重复"处理
+    console.error("[findDuplicateBook]", await res.text());
+    return null;
+  }
+
+  const data = await res.json() as { results: { id: string }[] };
+  if (data.results.length === 0) return null;
+  return `https://notion.so/${data.results[0].id.replace(/-/g, "")}`;
 }
