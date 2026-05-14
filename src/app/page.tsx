@@ -79,6 +79,10 @@ export default function Home() {
 
     const pendingItems = items.filter((i) => i.status === "pending");
 
+    // 在循环里直接收集结果，不依赖 items state
+    // 原因：setItems 是异步的，循环结束后直接读 items 拿到的还是旧快照（stale closure）
+    const collectedResults: ProcessResult[] = [];
+
     for (let i = 0; i < pendingItems.length; i++) {
       const item = pendingItems[i];
       setCurrentIndex(i + 1);
@@ -94,27 +98,36 @@ export default function Home() {
 
         if (data.success) {
           updateItem(item.id, { status: "success", bookInfo: data.bookInfo, pageUrl: data.pageUrl });
+          collectedResults.push({
+            filename: item.file.name,
+            previewUrl: item.previewUrl,
+            status: "success",
+            bookInfo: data.bookInfo,
+            pageUrl: data.pageUrl,
+          });
         } else {
           updateItem(item.id, { status: "error", error: data.error });
+          collectedResults.push({
+            filename: item.file.name,
+            previewUrl: item.previewUrl,
+            status: "error",
+            error: data.error,
+          });
         }
       } catch {
         updateItem(item.id, { status: "error", error: "网络错误，请重试" });
+        collectedResults.push({
+          filename: item.file.name,
+          previewUrl: item.previewUrl,
+          status: "error",
+          error: "网络错误，请重试",
+        });
       }
     }
 
     setProcessing(false);
-
-    // 处理完毕：把结果存入 localStorage，跳转到结果页
     // localStorage 是浏览器本地存储，刷新不丢，但关闭浏览器会清空（sessionStorage 才真的关了就没了）
-    const results: ProcessResult[] = items.map((item) => ({
-      filename: item.file.name,
-      previewUrl: item.previewUrl,
-      status: item.status === "success" ? "success" : "error",
-      bookInfo: item.bookInfo,
-      pageUrl: item.pageUrl,
-      error: item.error,
-    }));
-    localStorage.setItem("lovely-shelf-results", JSON.stringify(results));
+    localStorage.setItem("lovely-shelf-results", JSON.stringify(collectedResults));
     router.push("/result");
   };
 

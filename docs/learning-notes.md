@@ -129,3 +129,38 @@
 
 - **一句话总结：**
   上传页是纯前端交互：文件选择→本地预览→逐张调用 API→实时更新状态→存结果跳转，完整体现了 React 状态驱动 UI 的思维方式。
+
+---
+
+### T11 - 结果页 src/app/result/page.tsx
+
+- **学到的核心概念：**
+  - SSR 与 `useEffect`：Next.js 组件默认在服务器渲染，服务器没有 `localStorage`/`window`，凡是用到浏览器 API 的代码必须放进 `useEffect` 里，等组件挂载到浏览器后才执行
+  - `loaded` 状态防闪烁：初始时数据还没加载，空数组不代表"真的没数据"，用一个 `boolean` 标志区分"未加载"和"加载完但结果为空"
+  - blob URL 的生命周期：`URL.createObjectURL()` 生成的 `blob:` 地址只存在于当前标签页的内存里，刷新页面后会失效——这是浏览器的设计，不是 bug
+
+- **用到的关键 API/函数：**
+  - `localStorage.getItem(key)` + `JSON.parse()`：读取跨页面传递的数据
+  - `useEffect(() => {...}, [])`：空依赖数组 `[]` 表示只在组件首次挂载时执行一次
+  - `img` 的 `onError`：图片加载失败时的降级处理（blob 失效时隐藏而不是显示破图）
+
+- **容易踩的坑：**
+  - 不能在组件顶层直接写 `localStorage.getItem()`，必须在 `useEffect` 里，否则服务端渲染报错
+  - blob URL 刷新后失效：如果要支持刷新后还能看到封面，需要用真实的图片 URL 而非 blob
+
+- **一句话总结：**
+  结果页的核心挑战是"服务端不知道浏览器的事"——用 `useEffect` + `loaded` 标志优雅解决 SSR 和客户端数据读取的时序问题。
+
+- **测试中发现并修复的 Bug：**
+
+  **Bug 1：stale closure（过时闭包）导致所有结果显示"识别失败"**
+  - 现象：API 明明成功了，结果页全部显示错误
+  - 原因：`handleProcess` 函数是异步的，`updateItem` 会调用 `setItems` 更新 state，但 state 更新是异步的。循环结束后直接读 `items.map(...)` 拿到的是函数创建时的旧快照，所有 item 还是 `"pending"` 状态
+  - 修法：在循环内每处理完一张就 push 进 `collectedResults` 数组，不依赖 `items` state
+  - 行业常识：React 的 state 是快照而非引用——在闭包（async 函数、setTimeout、事件回调）里读 state 变量，永远拿到的是该函数创建时的版本
+
+  **Bug 2：Claude 返回 JSON 内部含未转义双引号，导致解析失败**
+  - 现象：`"description": "...播客\"Two Peas\"。"` — `"Two Peas"` 的引号破坏了 JSON 格式
+  - 修法 1：system prompt 明确禁止字符串值内出现英文双引号
+  - 修法 2：用 `rawText.match(/\{[\s\S]*\}/)` 贪婪提取 JSON 对象，比正则替换代码块标记更健壮
+  - 行业常识：AI 输出永远不要 100% 信任格式，解析层要做防御，`[\s\S]*` 是匹配"包括换行符在内的所有字符"的惯用写法

@@ -12,7 +12,7 @@ const client = new Anthropic({
 const SYSTEM_PROMPT = `你是一个专业的图书信息识别助手。
 用户会发给你一张书籍封面图片，你需要从封面中提取信息。
 
-请严格按以下 JSON 格式返回，不要输出任何其他文字：
+请严格按以下 JSON 格式返回，不要输出任何其他文字，不要加代码块标记：
 {
   "title": "书名主标题",
   "subtitle": "副标题或null",
@@ -22,6 +22,10 @@ const SYSTEM_PROMPT = `你是一个专业的图书信息识别助手。
   "genres": ["类型1", "类型2"],
   "description": "一句话描述这本书的主题"
 }
+
+重要规则：
+1. 所有字符串值内部不能出现英文双引号 "，书名、人名等专有名词改用单引号 ' 或直接不加引号
+2. 不要在 JSON 外面加任何文字或代码块（不要输出 \`\`\`json）
 
 类型标签从以下选择（可多选）：
 回忆录、传记、喜剧、冒险、心理相关、励志、身心健康、育儿、科普、园艺、体育、历史、儿童读物、旅行、其他`;
@@ -55,14 +59,15 @@ export async function recognizeBook(base64Image: string): Promise<BookInfo> {
   const rawText =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Claude 有时会在 JSON 外面包一层 ```json ... ```，这里把它剥掉
-  const jsonText = rawText
-    .replace(/^```json\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  // 用贪婪匹配直接抓 { ... } 块，比正则替换代码块标记更可靠
+  // 能处理：纯 JSON、```json\n{...}\n```、前后有多余文字等所有情况
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error(`Claude 没有返回 JSON 格式：${rawText}`);
+  }
 
   try {
-    return JSON.parse(jsonText) as BookInfo;
+    return JSON.parse(jsonMatch[0]) as BookInfo;
   } catch {
     throw new Error(`Claude 返回了无法解析的内容：${rawText}`);
   }
