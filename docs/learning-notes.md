@@ -353,3 +353,26 @@
 
 - **一句话总结：**
   OAuth 登录的核心是"把身份验证外包给 Google"——next-auth 负责和 Google 握手、管理 session，我们只需要配置"谁能进来"（`signIn` callback + 邮箱白名单），整个密码相关的逻辑完全不用自己写。
+
+---
+
+### T21 - 入库后同类书推荐
+
+- **学到的核心概念：**
+  - `Promise.all([a, b])`：让两个互不依赖的异步请求并发执行，比顺序执行快一倍——这是行业里处理"同时需要多个结果"的标准写法
+  - Notion 分页模式：REST API 每次最多返回 100 条，用 `has_more` + `next_cursor` 翻页累加，这是 Notion/Stripe/GitHub 等 API 的通用分页约定
+  - 类型精简原则：`BookSummary` 只保留展示卡片必要的 4 个字段，不暴露完整 `BookInfo`——接口设计里叫"最小必要原则"
+
+- **用到的关键 API/函数：**
+  - `Promise.all` — 并发执行多个 Promise，全部完成后返回结果数组
+  - Notion `databases/{id}/query` — 按条件筛选 + 排序分页，这个项目里用 REST 而非 SDK（SDK 类型支持不够完整）
+  - `multi_select: { contains: genre }` — Notion 过滤语法，匹配标签包含某值的页面
+  - `sorts: [{ timestamp: "created_time", direction: "descending" }]` — 按入库时间倒序
+
+- **容易踩的坑：**
+  - **Notion 文件 URL 约 1 小时过期**：封面用的是 Notion S3 临时链接，刷新页面后图片可能消失，需要 `onError` 降级到占位图标
+  - **排除刚入库的书**：查推荐时新书已经在数据库里，不排除会把自己推荐给自己；对比 pageId 时要去掉连字符再比（Notion 有时带 `-` 有时不带）
+  - **`page_size: limit + 1`**：多取一本，过滤掉自己后刚好剩够 `limit` 本
+
+- **一句话总结：**
+  同类书推荐的本质是"查数据库 + 过滤 + 排版"，`Promise.all` 把计数和推荐两步从串行变并行是这个 ticket 最值得记住的性能优化思路。
