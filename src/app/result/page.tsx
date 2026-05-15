@@ -114,7 +114,7 @@ export default function ResultPage() {
 // ── 单张书卡片 ──
 // 抽成独立组件：让代码结构清晰，每张卡自己管理展开/折叠状态
 function BookCard({ result }: { result: ProcessResult }) {
-  const { filename, previewUrl, status, bookInfo, pageUrl, error } = result;
+  const { filename, previewUrl, status, bookInfo, pageUrl, error, stats } = result;
 
   if (status === "error") {
     return (
@@ -222,6 +222,21 @@ function BookCard({ result }: { result: ProcessResult }) {
             在 Notion 中查看
             <span className="text-shelf-400">→</span>
           </a>
+        )}
+
+        {/* 成就感提示：入库成功且后端返回了同类书统计时显示 */}
+        {stats && (
+          <div className="mt-3 bg-gradient-to-r from-shelf-500 to-shelf-600 rounded-xl px-4 py-3 flex items-center gap-3">
+            <span className="text-xl shrink-0">
+              {stats.countInGenre === 1 ? "🎊" : "🎉"}
+            </span>
+            <p className="text-white text-sm leading-snug">
+              {stats.countInGenre === 1
+                ? <>这是你书库里第一本 <span className="font-bold">{stats.primaryGenre}</span> 类的书！</>
+                : <>这是你第 <span className="font-bold text-base">{stats.countInGenre}</span> 本 <span className="font-bold">{stats.primaryGenre}</span> 类的书～</>
+              }
+            </p>
+          </div>
         )}
       </div>
     </div>

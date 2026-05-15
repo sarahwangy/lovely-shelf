@@ -119,6 +119,54 @@ export async function createBookPage(
   return { pageId: page.id, pageUrl };
 }
 
+// 统计某类型下的书籍总数，给"第 X 本 XX 类"成就感提示用
+// Notion API 没有直接返回 total count，需要分页累加 results.length
+export async function countBooksByGenre(genre: string): Promise<number> {
+  let count = 0;
+  let cursor: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = {
+      filter: {
+        property: NOTION_FIELDS.genres,
+        // multi_select contains：只要这本书的类型标签包含 genre 就算
+        multi_select: { contains: genre },
+      },
+      page_size: 100, // 单次最多 100 条，有 has_more 就继续翻页
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    const res = await fetch(
+      `https://api.notion.com/v1/databases/${DATABASE_ID}/query`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${NOTION_TOKEN}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!res.ok) {
+      // 查询失败时不抛错，返回已累计的数量（可能不完整，但不阻断主流程）
+      console.error("[countBooksByGenre]", await res.text());
+      return count;
+    }
+
+    const data = (await res.json()) as {
+      results: unknown[];
+      has_more: boolean;
+      next_cursor: string | null;
+    };
+    count += data.results.length;
+    cursor = data.has_more && data.next_cursor ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return count;
+}
+
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null
 // SDK v5 的 dataSources.query 需要 data_source_id（不同于 database_id），
 // 直接调 REST API /v1/databases/{id}/query 更稳，和文件上传用同一模式

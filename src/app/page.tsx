@@ -25,6 +25,11 @@ export type ProcessResult = {
   bookInfo?: BookInfo;
   pageUrl?: string;
   error?: string;
+  // 入库成功后后端返回的同类书统计，用于结果页"第 X 本 XX 类"提示
+  stats?: {
+    primaryGenre: string;
+    countInGenre: number;
+  };
 };
 
 export default function Home() {
@@ -221,6 +226,8 @@ export default function Home() {
             status: "success",
             bookInfo: data.bookInfo,
             pageUrl: data.pageUrl,
+            // stats 是后端返回的同类书计数，直接透传给结果页
+            stats: data.stats ?? undefined,
           };
         } else {
           updateItem(item.id, { status: "error", error: data.error });

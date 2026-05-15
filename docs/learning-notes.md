@@ -304,3 +304,26 @@
 
 - **一句话总结：**
   HEIC 支持的核心是"用 WebAssembly 把 C 库搬进浏览器"——libheif-js 把 libheif 打包成 WASM，让 Chrome 也能解码 iPhone 的 HEVC 格式，前端转好 JPG 再上传，后端从此只见 JPEG。
+
+---
+
+### T20 - 入库后同类书计数提示
+
+- **学到的核心概念：**
+  - 游标分页（Cursor Pagination）：Notion API 不直接返回总数，每次查询最多返回 100 条，如果 `has_more: true` 就用 `next_cursor` 再查下一页，循环直到 `has_more: false`。这是行业通用的分页模式，PostgreSQL、GitHub API、Stripe API 都用类似设计
+  - 数据流向（单向）：后端计算 `stats` → 放入 API JSON → 前端 `processOne` 捕获 → 存入 `localStorage` → 结果页读取渲染。数据只向下流，不反向，这是 React 的核心设计原则
+  - 顺序很重要：必须先 `createBookPage`（写入）再 `countBooksByGenre`（查询），这样新书已包含在计数里，顺序反了计数会少 1
+
+- **用到的关键 API/函数：**
+  - Notion REST `databases/{id}/query` + `filter.multi_select.contains`：筛选某个 multi-select 字段包含特定值的所有页面
+  - `has_more` + `next_cursor`：Notion 分页的两个关键字段，`has_more` 是布尔值，`next_cursor` 是下一页的起点 ID
+  - `do { ... } while (cursor)`：先执行一次再判断条件，适合"至少查一次"的分页场景，比 `while` 更简洁
+  - JSX 条件渲染：`{stats && <div>...</div>}` 当 `stats` 为 `null/undefined` 时整个块不渲染
+
+- **容易踩的坑：**
+  - Notion API 查询结果不按创建顺序排，计数用 `results.length` 累加而非读某个 total 字段
+  - `countBooksByGenre` 查询失败时返回已累计的数量而非抛错——这是"降级处理"，让主流程（入库）不因为次要功能（计数）失败而中断，行业里叫"graceful degradation"
+  - `stats` 在 `genres` 为空时为 `null`，前端要用 `{stats && ...}` 保护，不能直接 `stats.primaryGenre`
+
+- **一句话总结：**
+  游标分页 + 先写后查 + 数据单向流动，三个模式叠在一起，就实现了"第 X 本 XX 类"这个让用户有成就感的小功能。
