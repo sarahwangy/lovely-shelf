@@ -400,3 +400,26 @@
 
 - **一句话总结：**
   Modal 的本质是"用 state 控制显示/隐藏 + 用 pageId 决定展示哪本书"，所有键盘、滚动、层级的处理都是为了让体验接近原生 App 而补的细节。
+
+---
+
+### T22 - Dashboard 洞察看板
+
+- **学到的核心概念：**
+  - **内存缓存（in-memory cache）**：用一个模块级变量 `let cache = { data, expiresAt }` 存上次的计算结果，60 秒内直接返回，不重复打 Notion API。行业里小项目常用这个模式，大项目换成 Redis
+  - **`usePathname()`**：Next.js 提供的 hook，返回当前 URL 路径（如 `/dashboard`），用来判断哪个导航项要高亮。行业里叫"active link"模式，几乎所有导航栏都这么做
+  - **响应式网格布局**：`grid grid-cols-1 lg:grid-cols-3` 的含义——手机单列，大屏三列。`lg:col-span-2` 让某个 widget 占两格。这是 Tailwind 响应式的标准写法
+  - **共用组件（Shared Component）**：把导航栏抽成 `NavBar.tsx`，所有页面 import 同一个，改一处全局生效。行业里叫"single source of truth"，是组件化开发的核心思想
+
+- **用到的关键 API/函数：**
+  - `signOut({ callbackUrl: "/login" })` — next-auth/react 客户端登出，跳回登录页
+  - `pathname.startsWith(href)` — 判断子路径也算激活（`/dashboard/genre/xxx` 也高亮"书架"）
+  - recharts `<PieChart>` + `<Pie>` + `<Cell>` — 环形图，`innerRadius` 控制中空大小
+  - recharts `<BarChart>` + `<Bar radius={[6,6,0,0]}>` — 柱状图，radius 让顶部圆角
+
+- **容易踩的坑：**
+  - **recharts Tooltip formatter 类型**：v3 的 `value` 参数类型是 `ValueType | undefined`，直接写 `(v: number)` 会报错，要写 `(v) => \`${v ?? 0} 本\`` 处理 undefined
+  - **模块级变量做缓存**：Next.js 每次冷启动（Vercel 函数重启）缓存会清空，这是预期行为——热启动时缓存有效，冷启动时重新算一次，可以接受
+
+- **一句话总结：**
+  Dashboard 的核心是"一次全量拉数据，然后在内存里做各种统计计算"，缓存避免每次刷页面都重复这个过程，recharts 负责把数字变成图。
