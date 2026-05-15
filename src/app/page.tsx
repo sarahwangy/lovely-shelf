@@ -4,7 +4,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { BookInfo } from "@/types/book";
+import type { BookInfo, BookSummary } from "@/types/book";
 
 // 每张图片在处理过程中的完整状态
 type FileItem = {
@@ -30,6 +30,8 @@ export type ProcessResult = {
     primaryGenre: string;
     countInGenre: number;
   };
+  // 同类书推荐列表
+  recommendations?: BookSummary[];
 };
 
 export default function Home() {
@@ -226,8 +228,8 @@ export default function Home() {
             status: "success",
             bookInfo: data.bookInfo,
             pageUrl: data.pageUrl,
-            // stats 是后端返回的同类书计数，直接透传给结果页
             stats: data.stats ?? undefined,
+            recommendations: data.recommendations ?? undefined,
           };
         } else {
           updateItem(item.id, { status: "error", error: data.error });

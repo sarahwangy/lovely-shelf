@@ -10,3 +10,12 @@ export type BookInfo = {
   genres: Genre[];           // 必须是预设类型标签的子集
   description: string;
 };
+
+// 同类书推荐卡片用的精简类型（只需要展示够用的字段）
+export type BookSummary = {
+  pageId: string;
+  title: string;
+  author: string;
+  coverUrl: string | null; // Notion 文件 URL（临时 S3 链接，约 1 小时有效）
+  notionUrl: string;
+};

@@ -1,6 +1,6 @@
 import { Client } from "@notionhq/client";
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
-import type { BookInfo } from "@/types/book";
+import type { BookInfo, BookSummary } from "@/types/book";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
@@ -165,6 +165,74 @@ export async function countBooksByGenre(genre: string): Promise<number> {
   } while (cursor);
 
   return count;
+}
+
+// 查同类书推荐：按类型找最近入库的书，排除刚入库的那本，最多返回 limit 本
+export async function listBooksByGenre(
+  genre: string,
+  excludePageId: string,
+  limit = 5
+): Promise<BookSummary[]> {
+  const res = await fetch(
+    `https://api.notion.com/v1/databases/${DATABASE_ID}/query`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filter: {
+          property: NOTION_FIELDS.genres,
+          multi_select: { contains: genre },
+        },
+        // created_time 降序：最近入库的排前面
+        sorts: [{ timestamp: "created_time", direction: "descending" }],
+        // 多取一本，过滤掉刚入库的那本后还能凑够 limit 本
+        page_size: limit + 1,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    console.error("[listBooksByGenre]", await res.text());
+    return [];
+  }
+
+  // Notion 页面 properties 的类型比较复杂，用 unknown 再按需取值
+  const data = (await res.json()) as {
+    results: {
+      id: string;
+      properties: Record<string, unknown>;
+    }[];
+  };
+
+  return data.results
+    .filter((page) => page.id.replace(/-/g, "") !== excludePageId.replace(/-/g, ""))
+    .slice(0, limit)
+    .map((page) => {
+      const props = page.properties as Record<string, {
+        title?: { plain_text: string }[];
+        rich_text?: { plain_text: string }[];
+        files?: { file?: { url: string }; external?: { url: string } }[];
+      }>;
+
+      // 从 title 属性取书名（数组里第一个文本块）
+      const title = props[NOTION_FIELDS.title]?.title?.[0]?.plain_text ?? "(未知书名)";
+      const author = props[NOTION_FIELDS.author]?.rich_text?.[0]?.plain_text ?? "";
+      // 封面是 Files 属性：自己上传的是 file.url，外链是 external.url
+      const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
+      const coverUrl = coverFile?.file?.url ?? coverFile?.external?.url ?? null;
+
+      return {
+        pageId: page.id,
+        title,
+        author,
+        coverUrl,
+        notionUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
+      };
+    });
 }
 
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null

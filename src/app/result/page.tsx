@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProcessResult } from "@/app/page";
+import type { BookSummary } from "@/types/book";
 
 export default function ResultPage() {
   const router = useRouter();
@@ -238,7 +239,66 @@ function BookCard({ result }: { result: ProcessResult }) {
             </p>
           </div>
         )}
+
+        {/* 同类书推荐：同类书 ≥ 2 本才显示（1本时就是刚入库的自己，没意义） */}
+        {result.recommendations && result.recommendations.length > 0 && (
+          <RecommendationRow
+            genre={stats?.primaryGenre ?? ""}
+            books={result.recommendations}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+// ── 同类书推荐横向滚动区块 ──
+function RecommendationRow({ genre, books }: { genre: string; books: BookSummary[] }) {
+  return (
+    <div className="mt-4 -mx-4 px-4">
+      <p className="text-xs font-medium text-ink-muted mb-2.5">
+        📚 你的{genre}书架
+      </p>
+      {/* overflow-x-auto 横向滚动，scrollbar-hide 隐藏滚动条 */}
+      <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+        {books.map((book) => (
+          <RecommendationCard key={book.pageId} book={book} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── 单本推荐卡片 ──
+function RecommendationCard({ book }: { book: BookSummary }) {
+  return (
+    <a
+      href={book.notionUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="shrink-0 w-24 group"
+    >
+      {/* 封面图：固定宽高，object-cover 保持比例裁剪 */}
+      <div className="w-24 h-32 rounded-xl overflow-hidden bg-stone-100 shadow-sm mb-1.5 group-hover:shadow-md transition-shadow">
+        {book.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={book.coverUrl}
+            alt={book.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // 封面 URL 过期时（Notion S3 链接约 1 小时有效）降级到占位
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-2xl bg-shelf-50">
+            📖
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-ink font-medium line-clamp-2 leading-snug">{book.title}</p>
+      <p className="text-xs text-ink-muted mt-0.5 truncate">{book.author}</p>
+    </a>
   );
 }

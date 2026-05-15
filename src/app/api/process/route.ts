@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
-import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre } from "@/lib/notion";
+import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre, listBooksByGenre } from "@/lib/notion";
+import type { BookSummary } from "@/types/book";
 import type { BookInfo } from "@/types/book";
 
 // 结构化日志：[时间戳] [process] 步骤 状态 耗时ms
@@ -93,18 +94,23 @@ export async function POST(request: NextRequest) {
     const { pageUrl } = await createBookPage(bookInfo, fileUploadId, filename);
     log("notion-write", "ok", Date.now() - t, pageUrl);
 
-    // 第六步：统计同类书数量（入库之后再查，所以新书已包含在内）
-    // genres[0] 是主类型，没有类型标签时跳过
+    // 第六步：统计同类书数量 + 查推荐（入库之后再查，新书已包含在内）
     t = Date.now();
     let stats: { primaryGenre: string; countInGenre: number } | null = null;
+    let recommendations: BookSummary[] = [];
     if (bookInfo.genres.length > 0) {
       const primaryGenre = bookInfo.genres[0];
-      const countInGenre = await countBooksByGenre(primaryGenre);
+      // 两个查询并发跑，互不依赖，用 Promise.all 节省时间
+      const [countInGenre, recs] = await Promise.all([
+        countBooksByGenre(primaryGenre),
+        listBooksByGenre(primaryGenre, pageUrl, 5),
+      ]);
       stats = { primaryGenre, countInGenre };
-      log("count-genre", "ok", Date.now() - t, `${primaryGenre}: ${countInGenre}本`);
+      recommendations = recs;
+      log("count-genre", "ok", Date.now() - t, `${primaryGenre}: ${countInGenre}本, 推荐${recs.length}本`);
     }
 
-    // 成功：返回识别结果 + Notion 链接 + 同类书统计
+    // 成功：返回识别结果 + Notion 链接 + 同类书统计 + 推荐书列表
     log("total", "ok", Date.now() - reqStart);
     return NextResponse.json({
       success: true,
@@ -112,6 +118,7 @@ export async function POST(request: NextRequest) {
       bookInfo,
       pageUrl,
       stats,
+      recommendations,
     });
 
   } catch (err) {
