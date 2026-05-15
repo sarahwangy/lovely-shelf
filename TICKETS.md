@@ -359,6 +359,162 @@ T22.6 热词云（3-4h）— 这个最好看，但工程量也最大，留到最
 
 ---
 
+🔴 T20.5：Google OAuth 登录 + 邮箱白名单（必做）
+
+前置：T20.5（已拿到 Vercel URL）
+预计耗时：1-1.5 小时
+为什么必做：Vercel deploy URL 是公开的，任何人拿到链接就能上传图片、烧你的 Anthropic 额度、往你 Notion 塞数据。部署完到这一步之前不要把链接发给任何人。
+
+任务 A：Google Cloud Console 配置（30 分钟）
+
+建项目
+
+访问 https://console.cloud.google.com/
+顶部项目选择器 → NEW PROJECT
+Project name: love-my-shelf
+创建后记得切换到这个项目
+
+
+配置 OAuth Consent Screen
+
+左侧菜单 → APIs & Services → OAuth consent screen（新 UI 可能叫 "Branding"）
+User Type: External → CREATE
+填表（只填必填项）：
+
+App name: Love My Shelf
+User support email: 你的 Gmail
+Developer contact email: 你的 Gmail
+
+
+Scopes 步骤：跳过（直接 SAVE AND CONTINUE）
+Test users：点 + ADD USERS，加 sarahwangdk@gmail.com，再加任何你想让其登录的朋友邮箱
+⚠️ 不要点 Publish App，保持 Testing 状态
+
+
+创建 OAuth Client ID
+
+左侧 → Credentials → + CREATE CREDENTIALS → OAuth client ID
+Application type: Web application
+Name: love-my-shelf-web
+Authorized JavaScript origins（点 ADD URI 加两个）：
+
+http://localhost:3000
+https://love-my-shelf-xxx.vercel.app（你的实际 Vercel URL）
+
+
+Authorized redirect URIs（点 ADD URI 加两个）：
+
+http://localhost:3000/api/auth/callback/google
+https://love-my-shelf-xxx.vercel.app/api/auth/callback/google
+
+
+点 CREATE
+立刻复制弹出的 Client ID 和 Client Secret（Secret 关闭后可能要重新生成）
+
+
+
+任务 B：环境变量（5 分钟）
+
+生成 AUTH_SECRET：
+
+bash   openssl rand -base64 32
+
+本地 .env.local 添加：
+
+   GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
+   AUTH_SECRET=刚才生成的字符串
+   AUTH_URL=http://localhost:3000
+
+Vercel 上（Settings → Environment Variables）添加同样 4 个变量，其中 AUTH_URL 改为实际 Vercel URL，三个环境（Production / Preview / Development）都勾上。
+
+任务 C：代码接入 Auth.js（45 分钟）
+
+安装：
+
+bash   npm install next-auth@beta
+
+创建 src/auth.ts：
+
+typescript   import NextAuth from 'next-auth';
+   import Google from 'next-auth/providers/google';
+
+   const ALLOWED_EMAILS = ['sarahwangdk@gmail.com'];
+
+   export const { handlers, auth, signIn, signOut } = NextAuth({
+     providers: [Google],
+     callbacks: {
+       async signIn({ user }) {
+         return !!user.email && ALLOWED_EMAILS.includes(user.email);
+       },
+     },
+     pages: {
+       signIn: '/login',
+     },
+   });
+
+创建 src/app/api/auth/[...nextauth]/route.ts：
+
+typescript   export { GET, POST } from '@/auth';
+
+创建 src/middleware.ts：
+
+typescript   export { auth as middleware } from '@/auth';
+
+   export const config = {
+     matcher: ['/((?!api/auth|login|_next/static|_next/image|favicon.ico).*)'],
+   };
+
+创建 src/app/login/page.tsx：
+
+tsx   import { signIn } from '@/auth';
+
+   export default function Login() {
+     return (
+       <div className="min-h-dvh flex items-center justify-center bg-orange-50">
+         <div className="bg-white p-8 rounded-2xl shadow-lg w-80 text-center">
+           <h1 className="text-2xl font-bold mb-6">📚 Love My Shelf</h1>
+           <form action={async () => {
+             'use server';
+             await signIn('google', { redirectTo: '/' });
+           }}>
+             <button className="w-full bg-white border-2 border-gray-200 py-3 rounded-lg hover:bg-gray-50">
+               使用 Google 登录
+             </button>
+           </form>
+           <p className="text-xs text-gray-400 mt-6">仅限授权账号</p>
+         </div>
+       </div>
+     );
+   }
+
+保护所有 API 路由：在每个 /api/*/route.ts 顶部加：
+
+typescript   import { auth } from '@/auth';
+
+   export async function POST(req: Request) {
+     const session = await auth();
+     if (!session?.user) {
+       return Response.json({ error: 'Unauthorized' }, { status: 401 });
+     }
+     // ... 原有逻辑
+   }
+特别注意：/api/process、/api/books/[pageId]、/api/stats、/api/wordcloud 全部都要加。
+任务 D：Anthropic 额度限制（双保险，5 分钟）
+
+console.anthropic.com → Settings → Limits
+设 Monthly spend limit：$20（个人项目够用，被滥用最多损失这么多）
+设 RPM（requests per minute）限制：5-10
+
+DoD：
+
+未登录访问 https://love-my-shelf-xxx.vercel.app/ 自动跳到 /login
+用自己 Gmail 登录能进，秒过
+用陌生 Gmail 登录看到 "Access blocked"
+未登录直接调 curl https://love-my-shelf-xxx.vercel.app/api/process 返回 401
+Anthropic Console 能看到 spend limit 已设
+浏览器无痕窗口测一遍登录流程，确认完整可用
+
 ### **T21：同类书推荐（最多 5 本）**
 - **前置**：T20
 - **预计耗时**：2 小时

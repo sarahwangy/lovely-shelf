@@ -327,3 +327,29 @@
 
 - **一句话总结：**
   游标分页 + 先写后查 + 数据单向流动，三个模式叠在一起，就实现了"第 X 本 XX 类"这个让用户有成就感的小功能。
+
+---
+
+### T20.5 - Google OAuth 登录 + 邮箱白名单
+
+- **学到的核心概念：**
+  - OAuth 2.0 流程：用户点登录 → 跳到 Google → Google 验证身份 → 带着"授权码"跳回你的网站 → 后端用授权码换 token → 建立 session。整个过程你的服务器从没碰到用户的 Google 密码
+  - next-auth v5 的三层保护：① `proxy.ts` 拦截页面请求（未登录跳 /login）、② `authorized` callback 控制是否放行、③ `signIn` callback 控制哪些账号能登录、④ API route 里手动 `auth()` 检查（双保险）
+  - Server Action：`"use server"` 标记的代码块在服务端执行，浏览器看不到代码内容，适合触发登录这类"只能服务端做"的操作
+  - 环境变量不写死在代码里：白名单邮箱放在 `AUTH_ALLOWED_EMAILS`，Client Secret 放在 `AUTH_GOOGLE_SECRET`，代码推到 GitHub 也不会泄露
+
+- **用到的关键 API/函数：**
+  - `NextAuth({ providers, callbacks, pages })`：一次配置搞定 OAuth、session 管理、回调处理
+  - `callbacks.authorized({ auth })`：proxy 层的守门员，`auth` 为 null 时返回 false → 自动跳登录页
+  - `callbacks.signIn({ user })`：OAuth 成功后的账号过滤，这里做邮箱白名单检查
+  - `export { auth as proxy }`：Next.js 16 把 middleware 改名为 proxy，功能完全一样，只是文件名和导出名变了
+  - `auth()` 在 route handler 里调用：服务端检查当前 session，返回 null 就是未登录
+
+- **容易踩的坑：**
+  - **next-auth v5 环境变量名变了**：v4 用 `GOOGLE_CLIENT_ID`，v5 用 `AUTH_GOOGLE_ID`（规律是 `AUTH_{PROVIDER}_ID`）。填了旧名字，client_id 是 undefined，Google 返回 "invalid_client"
+  - **Next.js 16 把 middleware 改名为 proxy**：文件名必须是 `proxy.ts`，导出必须是 `proxy` 或 default export，旧的 `middleware.ts` 会有废弃警告且不生效
+  - **`authorized` callback 是触发重定向的关键**：不加这个 callback，`auth as proxy` 默认放行所有请求，什么保护都没有
+  - **Client Secret "invalid"**：Client ID 对了 Google 会跳回来，但 Secret 错了会在 callback 时报 `invalid_client`——两个错误表现不同，可以据此判断是哪个值出问题
+
+- **一句话总结：**
+  OAuth 登录的核心是"把身份验证外包给 Google"——next-auth 负责和 Google 握手、管理 session，我们只需要配置"谁能进来"（`signIn` callback + 邮箱白名单），整个密码相关的逻辑完全不用自己写。

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
 import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre } from "@/lib/notion";
@@ -17,6 +18,13 @@ function log(step: string, status: "ok" | "err" | "skip", ms: number, extra?: st
 // 文件名必须叫 route.ts，导出的函数名对应 HTTP 方法（POST/GET/PUT 等）
 // Next.js 自动把 src/app/api/process/route.ts 变成 /api/process 这个 URL
 export async function POST(request: NextRequest) {
+  // 在处理任何业务逻辑之前，先验证登录态
+  // auth() 读取 session cookie，未登录时 session 为 null
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
+  }
+
   const reqStart = Date.now();
   let filename = "(unknown)";
 
