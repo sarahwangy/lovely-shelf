@@ -279,3 +279,28 @@
 
 - **一句话总结：**
   好的日志是"时间戳 + 步骤 + 耗时 + 状态"四件套，让线上问题从"不知道哪步出错"变成"一眼看出哪步慢了多少毫秒"。
+
+---
+
+### T18 - HEIC 格式支持（WebAssembly 前端转码）
+
+- **学到的核心概念：**
+  - WebAssembly（WASM）：把 C/C++ 代码编译成浏览器能运行的二进制格式，性能接近原生。`libheif-js` 就是把 C 写的 libheif 库编译成 WASM，让 Chrome 也能解码 iPhone 的 HEIC 格式
+  - 编解码器依赖：HEIC 是"容器格式"，里面可以用不同编码方式（AVC/HEVC）。iPhone 默认用 HEVC（H.265），这是一种更高效但需要专门解码器的格式。`heic2any` 只支持旧格式，`libheif-js` 支持 HEVC
+  - 动态 import：`await import("libheif-js/wasm-bundle")` 只在浏览器真正需要时才下载这个大包（~2MB WASM），而不是页面一加载就全部下载。这是"按需加载"的行业惯例
+  - `wasm-bundle` vs `wasm`：前者把 WASM 二进制内嵌在 JS 文件里（base64），打包工具不需要特殊配置；后者是动态加载 `.wasm` 文件，需要配置 webpack/Next.js 才能处理
+
+- **用到的关键 API/函数：**
+  - `new libheif.HeifDecoder()` → `decoder.decode(uint8Array)`：把 HEIC 字节流解码成图片对象数组
+  - `image.get_width()` / `image.get_height()`：读取解码后图片的尺寸
+  - `image.display(imageData, callback)`：把解码后的像素写入 `ImageData`（回调式异步 API，用 Promise 包装）
+  - `ctx.createImageData(w, h)` + `ctx.putImageData()`：Canvas 2D API，把原始像素数组渲染到画布
+  - `canvas.toBlob("image/jpeg", 0.9)`：Canvas 内容导出为 JPEG Blob
+
+- **容易踩的坑：**
+  - `libheif-js` 没有 TypeScript 类型定义，需要手动创建 `.d.ts` 声明文件（`declare module 'libheif-js/wasm-bundle'`）才能通过 `tsc` 检查
+  - `image.display()` 的回调如果收到 `null` 表示失败，需要用 `result ? resolve() : reject()` 来区分
+  - 三道 fallback 的顺序很重要：libheif-js（WASM，主力）→ heic2any（轻量，旧格式）→ Canvas decode（Safari 原生）
+
+- **一句话总结：**
+  HEIC 支持的核心是"用 WebAssembly 把 C 库搬进浏览器"——libheif-js 把 libheif 打包成 WASM，让 Chrome 也能解码 iPhone 的 HEVC 格式，前端转好 JPG 再上传，后端从此只见 JPEG。

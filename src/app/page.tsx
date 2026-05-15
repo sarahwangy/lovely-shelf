@@ -36,6 +36,8 @@ export default function Home() {
   // currentIndex 记录当前处理到第几张（用于显示进度文字）
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
+  // converting：HEIC 转换期间为 true，用于显示"正在处理 HEIC..."提示
+  const [converting, setConverting] = useState(false);
 
   // 更新单个 item 的状态（不影响其他 item）
   // 这里用函数式更新是行业惯例：避免读到过时的 state
@@ -43,9 +45,10 @@ export default function Home() {
     setItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
   }, []);
 
-  // HEIC → JPEG 转换，两道保险：
-  // 方法1：heic2any（适合部分非 HEVC 编码的 HEIC）
-  // 方法2：浏览器 Canvas 解码（Safari 原生支持 HEVC，是 iPhone 用户的主力方案）
+  // HEIC → JPEG 转换，三道保险：
+  // 方法1：libheif-js（WebAssembly，支持 HEVC，全浏览器包括 Chrome 都能用）
+  // 方法2：heic2any（轻量级，适合部分非 HEVC 编码的 HEIC）
+  // 方法3：Canvas 解码（Safari 原生支持 HEVC，fallback）
   const convertIfHeic = async (file: File): Promise<File> => {
     const name = file.name.toLowerCase();
     const isHeic =
@@ -58,18 +61,57 @@ export default function Home() {
 
     const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
 
-    // 方法1：heic2any（动态 import，用到时才加载）
+    // 方法1：libheif-js（WASM）— 主力方案，iPhone HEVC 格式靠这个
+    // 动态 import 避免服务端渲染报错，WASM 只在浏览器里运行
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const libheif = (await import("libheif-js/wasm-bundle")).default as any;
+      const arrayBuffer = await file.arrayBuffer();
+      const decoder = new libheif.HeifDecoder();
+      const data = decoder.decode(new Uint8Array(arrayBuffer));
+      if (!data || data.length === 0) throw new Error("no images");
+
+      const image = data[0];
+      const width = image.get_width();
+      const height = image.get_height();
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      const imageData = ctx.createImageData(width, height);
+
+      // display() 是异步回调：把解码后的像素写入 ImageData，再 putImageData 到 canvas
+      await new Promise<void>((resolve, reject) =>
+        image.display(imageData, (result: ImageData | null) =>
+          result ? resolve() : reject(new Error("libheif display failed"))
+        )
+      );
+
+      ctx.putImageData(imageData, 0, 0);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+          "image/jpeg",
+          0.9
+        )
+      );
+      return new File([blob], jpegName, { type: "image/jpeg" });
+    } catch {
+      // 方法1 失败，继续尝试方法2
+    }
+
+    // 方法2：heic2any（动态 import，用到时才加载）
     try {
       const heic2any = (await import("heic2any")).default;
       const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
       const jpeg = Array.isArray(result) ? result[0] : result;
       return new File([jpeg], jpegName, { type: "image/jpeg" });
     } catch {
-      // 方法1 失败（HEVC 编码的 iPhone HEIC 会到这里），继续尝试方法2
+      // 方法2 失败，继续尝试方法3
     }
 
-    // 方法2：Canvas 解码
-    // Safari 原生支持解码 HEVC HEIC，createImageBitmap 能直接读，再 toBlob 导出 JPEG
+    // 方法3：Canvas 解码（Safari 原生支持 HEVC HEIC）
     try {
       const bitmap = await createImageBitmap(file);
       const canvas = document.createElement("canvas");
@@ -85,8 +127,7 @@ export default function Home() {
       );
       return new File([blob], jpegName, { type: "image/jpeg" });
     } catch {
-      // 两种方法都失败（非 Safari 浏览器 + HEVC 编码），返回原文件
-      // processOne 会检测到还是 HEIC 并给用户友好提示
+      // 三种方法都失败，返回原文件（processOne 会给出友好提示）
       return file;
     }
   };
@@ -94,7 +135,10 @@ export default function Home() {
   // 把选中的 File 对象转成 FileItem，生成预览 URL
   // 改成 async：HEIC 转换是异步的，要等转完再生成预览
   const addFiles = useCallback(async (files: FileList | File[]) => {
+    // 有 HEIC 文件时，转换期间显示 loading 提示（heic2any 约 1-2 秒）
+    setConverting(true);
     const converted = await Promise.all(Array.from(files).map(convertIfHeic));
+    setConverting(false);
     const newItems: FileItem[] = converted.map((file) => {
       const n = file.name.toLowerCase();
       const isStillHeic = n.endsWith(".heic") || n.endsWith(".heif");
@@ -240,6 +284,19 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-ink mb-2">整理你的书架</h1>
           <p className="text-ink-muted text-sm">拍一张封面，AI 自动识别并存入 Notion 书库</p>
         </div>
+
+        {/* ── HEIC 转换中提示 ── */}
+        {converting && (
+          <div className="bg-shelf-50 border border-shelf-200 rounded-2xl p-4 mb-4 flex items-center gap-3">
+            <div className="w-8 h-8 bg-shelf-100 rounded-full flex items-center justify-center animate-spin text-lg shrink-0">
+              ⏳
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink">正在处理 HEIC…</p>
+              <p className="text-xs text-ink-muted">iPhone 原图转换中，通常需要 1-2 秒</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Drop Zone（没有文件时显示）── */}
         {items.length === 0 && (
