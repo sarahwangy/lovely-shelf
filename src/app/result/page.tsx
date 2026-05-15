@@ -5,11 +5,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProcessResult } from "@/app/page";
 import type { BookSummary } from "@/types/book";
+import BookDetailModal from "@/components/BookDetailModal";
 
 export default function ResultPage() {
   const router = useRouter();
   const [results, setResults] = useState<ProcessResult[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // 当前打开 modal 的书籍 pageId，null = 关闭
+  const [modalPageId, setModalPageId] = useState<string | null>(null);
 
   // useEffect 在组件挂载后才跑，确保在浏览器端读 localStorage
   // 服务端渲染阶段没有 localStorage，直接用会报错
@@ -91,7 +94,7 @@ export default function ResultPage() {
         {/* ── 书籍卡片列表 ── */}
         <div className="space-y-4">
           {results.map((result, idx) => (
-            <BookCard key={idx} result={result} />
+            <BookCard key={idx} result={result} onBookClick={setModalPageId} />
           ))}
         </div>
 
@@ -108,13 +111,25 @@ export default function ResultPage() {
           </p>
         </div>
       </main>
+
+      {/* modal 挂在页面根节点，确保层级高于所有内容 */}
+      <BookDetailModal
+        pageId={modalPageId}
+        onClose={() => setModalPageId(null)}
+      />
     </div>
   );
 }
 
 // ── 单张书卡片 ──
 // 抽成独立组件：让代码结构清晰，每张卡自己管理展开/折叠状态
-function BookCard({ result }: { result: ProcessResult }) {
+function BookCard({
+  result,
+  onBookClick,
+}: {
+  result: ProcessResult;
+  onBookClick: (pageId: string) => void;
+}) {
   const { filename, previewUrl, status, bookInfo, pageUrl, error, stats } = result;
 
   if (status === "error") {
@@ -245,6 +260,7 @@ function BookCard({ result }: { result: ProcessResult }) {
           <RecommendationRow
             genre={stats?.primaryGenre ?? ""}
             books={result.recommendations}
+            onBookClick={onBookClick}
           />
         )}
       </div>
@@ -253,7 +269,15 @@ function BookCard({ result }: { result: ProcessResult }) {
 }
 
 // ── 同类书推荐横向滚动区块 ──
-function RecommendationRow({ genre, books }: { genre: string; books: BookSummary[] }) {
+function RecommendationRow({
+  genre,
+  books,
+  onBookClick,
+}: {
+  genre: string;
+  books: BookSummary[];
+  onBookClick: (pageId: string) => void;
+}) {
   return (
     <div className="mt-4 -mx-4 px-4">
       <p className="text-xs font-medium text-ink-muted mb-2.5">
@@ -262,7 +286,7 @@ function RecommendationRow({ genre, books }: { genre: string; books: BookSummary
       {/* overflow-x-auto 横向滚动，scrollbar-hide 隐藏滚动条 */}
       <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
         {books.map((book) => (
-          <RecommendationCard key={book.pageId} book={book} />
+          <RecommendationCard key={book.pageId} book={book} onBookClick={onBookClick} />
         ))}
       </div>
     </div>
@@ -270,13 +294,19 @@ function RecommendationRow({ genre, books }: { genre: string; books: BookSummary
 }
 
 // ── 单本推荐卡片 ──
-function RecommendationCard({ book }: { book: BookSummary }) {
+// 改成 button：点击弹 modal，不再跳 Notion 新标签
+function RecommendationCard({
+  book,
+  onBookClick,
+}: {
+  book: BookSummary;
+  onBookClick: (pageId: string) => void;
+}) {
   return (
-    <a
-      href={book.notionUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="shrink-0 w-24 group"
+    <button
+      type="button"
+      onClick={() => onBookClick(book.pageId)}
+      className="shrink-0 w-24 group text-left"
     >
       {/* 封面图：固定宽高，object-cover 保持比例裁剪 */}
       <div className="w-24 h-32 rounded-xl overflow-hidden bg-stone-100 shadow-sm mb-1.5 group-hover:shadow-md transition-shadow">
@@ -299,6 +329,6 @@ function RecommendationCard({ book }: { book: BookSummary }) {
       </div>
       <p className="text-xs text-ink font-medium line-clamp-2 leading-snug">{book.title}</p>
       <p className="text-xs text-ink-muted mt-0.5 truncate">{book.author}</p>
-    </a>
+    </button>
   );
 }

@@ -1,6 +1,7 @@
 import { Client } from "@notionhq/client";
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
-import type { BookInfo, BookSummary } from "@/types/book";
+import type { BookInfo, BookSummary, BookDetail } from "@/types/book";
+import type { Status } from "@/lib/notion-fields";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
@@ -233,6 +234,76 @@ export async function listBooksByGenre(
         notionUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
       };
     });
+}
+
+// 按 pageId 取单本书的完整信息，给书籍详情 modal 用
+export async function getBookByPageId(pageId: string): Promise<BookDetail> {
+  const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`获取书籍详情失败：${await res.text()}`);
+  }
+
+  const page = (await res.json()) as {
+    id: string;
+    properties: Record<string, {
+      type: string;
+      title?: { plain_text: string }[];
+      rich_text?: { plain_text: string }[];
+      select?: { name: string } | null;
+      multi_select?: { name: string }[];
+      files?: { file?: { url: string }; external?: { url: string } }[];
+    }>;
+  };
+
+  const props = page.properties;
+  const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
+
+  return {
+    pageId: page.id,
+    pageUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
+    title: props[NOTION_FIELDS.title]?.title?.[0]?.plain_text ?? "",
+    subtitle: props[NOTION_FIELDS.subtitle]?.rich_text?.[0]?.plain_text || null,
+    author: props[NOTION_FIELDS.author]?.rich_text?.[0]?.plain_text ?? "",
+    gender: props[NOTION_FIELDS.gender]?.rich_text?.[0]?.plain_text || null,
+    country: (props[NOTION_FIELDS.country]?.select?.name ?? null) as BookDetail["country"],
+    genres: (props[NOTION_FIELDS.genres]?.multi_select?.map((g) => g.name) ?? []) as BookDetail["genres"],
+    description: props[NOTION_FIELDS.description]?.rich_text?.[0]?.plain_text ?? "",
+    coverUrl: coverFile?.file?.url ?? coverFile?.external?.url ?? null,
+    status: ((props[NOTION_FIELDS.status]?.select?.name) ?? "草稿") as Status,
+  };
+}
+
+// 局部更新书籍字段，给 modal 编辑保存用
+// Partial<BookInfo> 表示 BookInfo 里所有字段都变成可选，只传要改的那几个
+export async function updateBookPage(
+  pageId: string,
+  patch: Partial<BookInfo>
+): Promise<void> {
+  const properties: PageProperties = {};
+
+  // 只把 patch 里有的字段塞进 properties，没传的字段不改
+  if (patch.title !== undefined)
+    properties[NOTION_FIELDS.title] = { title: [{ text: { content: patch.title } }] };
+  if (patch.subtitle !== undefined)
+    properties[NOTION_FIELDS.subtitle] = { rich_text: [{ text: { content: patch.subtitle ?? "" } }] };
+  if (patch.author !== undefined)
+    properties[NOTION_FIELDS.author] = { rich_text: [{ text: { content: patch.author } }] };
+  if (patch.gender !== undefined)
+    properties[NOTION_FIELDS.gender] = { rich_text: [{ text: { content: patch.gender ?? "" } }] };
+  if (patch.country !== undefined)
+    properties[NOTION_FIELDS.country] = { select: patch.country ? { name: patch.country } : null };
+  if (patch.genres !== undefined)
+    properties[NOTION_FIELDS.genres] = { multi_select: patch.genres.map((g) => ({ name: g })) };
+  if (patch.description !== undefined)
+    properties[NOTION_FIELDS.description] = { rich_text: [{ text: { content: patch.description } }] };
+
+  await notion.pages.update({ page_id: pageId, properties });
 }
 
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null

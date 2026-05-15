@@ -1,4 +1,4 @@
-import type { Genre, Country } from "@/lib/notion-fields";
+import type { Genre, Country, Status } from "@/lib/notion-fields";
 
 // 这是整个项目的核心数据类型，从 AI 识别到 Notion 写入都用这一个
 export type BookInfo = {
@@ -9,6 +9,21 @@ export type BookInfo = {
   country: Country | null;   // 必须是预设国家选项之一，或 null
   genres: Genre[];           // 必须是预设类型标签的子集
   description: string;
+};
+
+// 书籍详情 modal 用的完整类型（包含所有字段 + Notion 元信息）
+export type BookDetail = {
+  pageId: string;
+  pageUrl: string;
+  title: string;
+  subtitle: string | null;
+  author: string;
+  gender: string | null;
+  country: Country | null;
+  genres: Genre[];
+  description: string;
+  coverUrl: string | null;
+  status: Status;
 };
 
 // 同类书推荐卡片用的精简类型（只需要展示够用的字段）
