@@ -58,7 +58,10 @@ export default function NavBar() {
         {/* 退出登录 */}
         <button
           type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => {
+            localStorage.removeItem("lovely-shelf-results");
+            signOut({ callbackUrl: "/login" });
+          }}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-ink-muted hover:bg-red-50 hover:text-red-500 transition-colors"
         >
           <span className="text-base leading-none">🚪</span>
