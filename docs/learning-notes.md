@@ -376,3 +376,27 @@
 
 - **一句话总结：**
   同类书推荐的本质是"查数据库 + 过滤 + 排版"，`Promise.all` 把计数和推荐两步从串行变并行是这个 ticket 最值得记住的性能优化思路。
+
+---
+
+### T22.5 - 书籍详情 Modal + Notion 编辑回写
+
+- **学到的核心概念：**
+  - **动态路由 API**：文件路径 `app/api/books/[pageId]/route.ts` 里的 `[pageId]` 是占位符，Next.js 自动把 URL 里的实际值注入进来。行业里几乎所有 REST API 都长这样（`/users/123`、`/posts/456`）
+  - **Next.js 16 Breaking Change — `params` 是 Promise**：以前 `params.pageId` 能直接用，v15 起必须 `const { pageId } = await params`。看官方文档很重要，这类"语法正确但运行时错误"的坑只有文档能救你
+  - **`Partial<T>`**：TypeScript 内置工具类型，把 `T` 的所有字段变成可选。用在"只传要改的字段"场景非常合适，行业里做"局部更新（PATCH）"接口时的标准写法
+  - **受控组件 (Controlled Component)**：`<input value={draft.title} onChange={...} />` 这种写法，React 完全控制输入框的值，和"非受控组件" (`ref`) 是两种流派，React 官方推荐受控
+
+- **用到的关键 API/函数：**
+  - `GET https://api.notion.com/v1/pages/{page_id}` — 取单本 Notion 页面完整信息
+  - `notion.pages.update({ page_id, properties })` — SDK 局部更新页面属性（只传要改的字段）
+  - `document.addEventListener("keydown", ...)` — 监听键盘事件实现 Esc 关闭
+  - `document.body.style.overflow = "hidden"` — modal 打开时禁止背景滚动（移动端 UX 必做）
+
+- **容易踩的坑：**
+  - **`params` 必须 await**：Next.js 16 的路由 handler 里 `{ params }` 的类型是 `Promise<{...}>`，忘记 await 会拿到 Promise 对象而不是字符串，运行时静默出错很难发现
+  - **`<a>` 改 `<button>`**：推荐卡片从链接改成弹 modal 时，语义上应该用 `<button>` 不是 `<a>`——`<a>` 表示"导航到某处"，`<button>` 表示"触发某个操作"，混用会影响无障碍访问
+  - **useEffect 清理函数**：监听键盘事件和修改 `body.overflow` 都需要在 `return` 里清除，否则组件卸载后监听器会留在内存里
+
+- **一句话总结：**
+  Modal 的本质是"用 state 控制显示/隐藏 + 用 pageId 决定展示哪本书"，所有键盘、滚动、层级的处理都是为了让体验接近原生 App 而补的细节。
