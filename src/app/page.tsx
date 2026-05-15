@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { BookInfo, BookSummary } from "@/types/book";
+import NavBar from "@/components/NavBar";
 
 // 每张图片在处理过程中的完整状态
 type FileItem = {
@@ -276,16 +277,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-shelf-50">
-      {/* ── Header ── */}
-      <header className="bg-white border-b border-stone-100 px-5 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-shelf-500 rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm">📚</span>
-          </div>
-          <span className="font-semibold text-ink text-lg tracking-tight">lovely-shelf</span>
-        </div>
-        <span className="text-xs text-ink-muted">把书封面变成书库</span>
-      </header>
+      <NavBar />
 
       <main className="max-w-xl mx-auto px-4 py-10">
         {/* Hero */}

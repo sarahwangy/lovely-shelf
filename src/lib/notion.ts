@@ -306,6 +306,59 @@ export async function updateBookPage(
   await notion.pages.update({ page_id: pageId, properties });
 }
 
+// 按类型查该分类所有书（分页，无数量限制），给分类封面墙用
+export async function listAllBooksByGenre(genre: string): Promise<BookSummary[]> {
+  const books: BookSummary[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const body: Record<string, unknown> = {
+      filter: { property: NOTION_FIELDS.genres, multi_select: { contains: genre } },
+      sorts: [{ timestamp: "created_time", direction: "descending" }],
+      page_size: 100,
+    };
+    if (cursor) body.start_cursor = cursor;
+
+    const res = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) { console.error("[listAllBooksByGenre]", await res.text()); return books; }
+
+    const data = (await res.json()) as {
+      results: { id: string; properties: Record<string, {
+        title?: { plain_text: string }[];
+        rich_text?: { plain_text: string }[];
+        files?: { file?: { url: string }; external?: { url: string } }[];
+      }> }[];
+      has_more: boolean;
+      next_cursor: string | null;
+    };
+
+    for (const page of data.results) {
+      const props = page.properties;
+      const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
+      books.push({
+        pageId: page.id,
+        title: props[NOTION_FIELDS.title]?.title?.[0]?.plain_text ?? "(未知书名)",
+        author: props[NOTION_FIELDS.author]?.rich_text?.[0]?.plain_text ?? "",
+        coverUrl: coverFile?.file?.url ?? coverFile?.external?.url ?? null,
+        notionUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
+      });
+    }
+
+    cursor = data.has_more && data.next_cursor ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return books;
+}
+
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null
 // SDK v5 的 dataSources.query 需要 data_source_id（不同于 database_id），
 // 直接调 REST API /v1/databases/{id}/query 更稳，和文件上传用同一模式

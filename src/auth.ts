@@ -14,6 +14,7 @@ const ALLOWED_EMAILS = (process.env.AUTH_ALLOWED_EMAILS ?? "")
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     // Google provider 自动读取 AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET 环境变量（NextAuth v5 命名规范）
+
     Google,
   ],
   callbacks: {
