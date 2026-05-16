@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from "react";
 import type { QuoteBook } from "@/app/api/quotes/route";
 import type { ImageResult } from "@/app/api/images/route";
 import type { VideoResult } from "@/app/api/videos/route";
+import type { MusicResult } from "@/app/api/music/route";
 
 // ── 背景预设 ──────────────────────────────────────────────────────
 
@@ -49,6 +50,18 @@ type BgType   = "color" | "gradient" | "image" | "video";
 type FontSize = "xs" | "sm" | "base" | "lg";
 type VPos     = "top" | "center" | "bottom";
 type HAlign   = "left" | "center" | "right";
+
+// 语录卡样式快照，存 localStorage，打开制作室时恢复
+export type CardStyle = {
+  textColor: string;
+  fontSize:  FontSize;
+  vPos:      VPos;
+  hAlign:    HAlign;
+  showWave:  boolean;
+  bgType:    BgType;
+  bgValue:   string;
+  videoSrc:  string;
+};
 
 const FONT_SIZE_LABEL: Record<FontSize, string> = { xs: "小", sm: "中", base: "大", lg: "特大" };
 const FONT_SIZE_CLASS: Record<FontSize, string> = {
@@ -114,12 +127,16 @@ export default function QuoteStudio({
   initialText      = "",
   initialBookTitle = "",
   initialAuthor    = "",
+  initialStyle,
+  styleKey,
   onSaved,
   onClose,
 }: {
   initialText?:      string;
   initialBookTitle?: string;
   initialAuthor?:    string;
+  initialStyle?:     CardStyle;     // 上次使用的卡片样式（从 localStorage 读取）
+  styleKey?:         string;        // localStorage key，导出后用来保存样式
   onSaved?:          (book: QuoteBook) => void;
   onClose:           () => void;
 }) {
@@ -128,16 +145,16 @@ export default function QuoteStudio({
   const [bookTitle, setBookTitle] = useState(initialBookTitle);
   const [author,    setAuthor]    = useState(initialAuthor);
 
-  // ── 文字样式 ──────────────────────────────────────────────────────
-  const [textColor, setTextColor] = useState("#ffffff");
-  const [fontSize,  setFontSize]  = useState<FontSize>("sm");
-  const [vPos,      setVPos]      = useState<VPos>("center");
-  const [hAlign,    setHAlign]    = useState<HAlign>("center");
-  const [showWave,  setShowWave]  = useState(false);
+  // ── 文字样式（有 initialStyle 时恢复上次的设置，否则用默认值）──────
+  const [textColor, setTextColor] = useState(initialStyle?.textColor ?? "#ffffff");
+  const [fontSize,  setFontSize]  = useState<FontSize>(initialStyle?.fontSize ?? "sm");
+  const [vPos,      setVPos]      = useState<VPos>(initialStyle?.vPos ?? "center");
+  const [hAlign,    setHAlign]    = useState<HAlign>(initialStyle?.hAlign ?? "center");
+  const [showWave,  setShowWave]  = useState(initialStyle?.showWave ?? false);
 
   // ── 背景 ──────────────────────────────────────────────────────────
-  const [bgType,  setBgType]  = useState<BgType>("color");
-  const [bgValue, setBgValue] = useState(COLOR_PRESETS[0].value);
+  const [bgType,  setBgType]  = useState<BgType>(initialStyle?.bgType ?? "color");
+  const [bgValue, setBgValue] = useState(initialStyle?.bgValue ?? COLOR_PRESETS[0].value);
 
   // ── 图片搜索 ──────────────────────────────────────────────────────
   const [imageFile,      setImageFile]      = useState<File | null>(null);
@@ -152,13 +169,21 @@ export default function QuoteStudio({
   const textareaRef   = useRef<HTMLTextAreaElement>(null);
 
   // ── 视频背景 ──────────────────────────────────────────────────────
-  const [videoSrc,     setVideoSrc]     = useState("");
+  const [videoSrc,     setVideoSrc]     = useState(initialStyle?.videoSrc ?? "");
   const vidSource = "pixabay" as const;
   const [vidQuery,     setVidQuery]     = useState("");
   const [vidResults,   setVidResults]   = useState<VideoResult[]>([]);
   const [vidSearching, setVidSearching] = useState(false);
   const [vidSearchErr, setVidSearchErr] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // ── 录制配乐 ──────────────────────────────────────────────────────
+  const [recMusicUrl,   setRecMusicUrl]   = useState("");
+  const [recMusicTitle, setRecMusicTitle] = useState("");
+  const [musQuery,      setMusQuery]      = useState("");
+  const [musResults,    setMusResults]    = useState<MusicResult[]>([]);
+  const [musSearching,  setMusSearching]  = useState(false);
+  const [musSearchErr,  setMusSearchErr]  = useState<string | null>(null);
 
   // ── 语音 ──────────────────────────────────────────────────────────
   const [listening, setListening] = useState(false);
@@ -287,6 +312,22 @@ export default function QuoteStudio({
     setVideoSrc(vid.videoUrl); setBgType("video"); setBgValue("");
   }
 
+  // ── 音乐搜索（录制用）────────────────────────────────────────────
+  async function handleMusicSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!musQuery.trim()) return;
+    setMusSearching(true); setMusSearchErr(null); setMusResults([]);
+    try {
+      const res  = await fetch(`/api/music?q=${encodeURIComponent(musQuery)}`);
+      const data = (await res.json()) as { music?: MusicResult[]; error?: string };
+      if (!res.ok || data.error) { setMusSearchErr(data.error ?? "搜索失败"); return; }
+      const tracks = data.music ?? [];
+      setMusResults(tracks);
+      if (tracks.length === 0) setMusSearchErr("没有找到，换英文关键词试试（如 calm、piano）");
+    } catch { setMusSearchErr("网络错误，请重试"); }
+    finally { setMusSearching(false); }
+  }
+
   // ── Emoji 插入光标 ────────────────────────────────────────────────
   // 点击 emoji 时，把它插入到 textarea 当前光标位置（多选：可以连续点击插入多个）
   function insertEmoji(emoji: string) {
@@ -303,6 +344,23 @@ export default function QuoteStudio({
     }, 0);
   }
 
+  // ── 保存当前卡片样式到 localStorage ──────────────────────────────────
+  // 下次点击 🎨 时可以恢复；data: URL（本地上传图片）太大不存，回退到默认纯色
+  function saveStyle() {
+    if (!styleKey) return;
+    const style: CardStyle = {
+      textColor,
+      fontSize,
+      vPos,
+      hAlign,
+      showWave,
+      bgType:  (bgType === "image" && bgValue.startsWith("data:")) ? "color" : bgType,
+      bgValue: bgValue.startsWith("data:") ? COLOR_PRESETS[0].value : bgValue,
+      videoSrc,
+    };
+    try { localStorage.setItem(styleKey, JSON.stringify(style)); } catch { /* storage full */ }
+  }
+
   // ── 导出 PNG ──────────────────────────────────────────────────────
   // 用 html-to-image 替代 html2canvas：支持现代 CSS（oklch/oklab）且能渲染 video 元素
   async function handleExport() {
@@ -316,6 +374,7 @@ export default function QuoteStudio({
       a.href = dataUrl; a.download = `quote-${Date.now()}.png`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a);
+      saveStyle();
     } finally { setExporting(false); }
   }
 
@@ -333,15 +392,43 @@ export default function QuoteStudio({
     const ctx = canvas.getContext("2d")!;
 
     // 浏览器对 MP4 支持不一；优先用 mp4，回退到 webm
-    const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
+    const mimeType    = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
       ? "video/mp4;codecs=avc1"
       : "video/webm";
-    const stream   = canvas.captureStream(30);
+    const canvasStream = canvas.captureStream(30);
+    const allTracks: MediaStreamTrack[] = [...canvasStream.getVideoTracks()];
+
+    // 混入配乐音轨：AudioContext 路由 → MediaStreamDestination → 拿 audio track
+    let recAudioEl:  HTMLAudioElement | null = null;
+    let recAudioCtx: AudioContext     | null = null;
+    if (recMusicUrl) {
+      try {
+        recAudioCtx = new AudioContext();
+        // 走代理：AudioContext 读取跨域音频需要 CORS 头，代理路由帮我们加上
+        const proxiedAudio = `/api/music/proxy?url=${encodeURIComponent(recMusicUrl)}`;
+        recAudioEl  = new Audio(proxiedAudio);
+        recAudioEl.loop = true;
+        const src  = recAudioCtx.createMediaElementSource(recAudioEl);
+        const dest = recAudioCtx.createMediaStreamDestination();
+        src.connect(dest);
+        src.connect(recAudioCtx.destination); // 录制同时本机也能听到
+        await recAudioEl.play();
+        allTracks.push(...dest.stream.getAudioTracks());
+      } catch (e) {
+        console.warn("[record] 音频混入失败，将录制无声视频:", e);
+        recAudioEl = null; recAudioCtx = null;
+      }
+    }
+
+    const stream   = new MediaStream(allTracks);
     const recorder = new MediaRecorder(stream, { mimeType });
     const chunks: Blob[] = [];
 
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
     recorder.onstop = () => {
+      // pause() 只暂停，src = "" 才能彻底释放音频资源并断开 Web Audio 图
+      if (recAudioEl) { recAudioEl.pause(); recAudioEl.src = ""; }
+      void recAudioCtx?.close();
       const ext  = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
       const blob = new Blob(chunks, { type: mimeType });
       const url  = URL.createObjectURL(blob);
@@ -350,6 +437,7 @@ export default function QuoteStudio({
       document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      saveStyle();
       setRecording(false);
     };
 
@@ -580,6 +668,9 @@ export default function QuoteStudio({
                         }`}>{d}s</button>
                     ))}
                   </div>
+                  {recMusicUrl && (
+                    <p className="text-[10px] text-shelf-600 text-center truncate px-1">♪ {recMusicTitle}</p>
+                  )}
                   <button type="button" onClick={handleExportVideo} disabled={recording}
                     className="w-full py-2.5 rounded-xl text-sm font-medium bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-300 text-white transition-colors">
                     {recording ? `录制中 ${recordDuration}s…` : "🎬 录制 MP4"}
@@ -744,6 +835,70 @@ export default function QuoteStudio({
                         ))}
                       </div>
                     )}
+
+                    {/* ── 录制配乐（Pixabay 音乐库）── */}
+                    <div className="pt-3 border-t border-stone-200">
+                      <p className="text-xs font-medium text-ink-muted mb-2">
+                        🎵 录制配乐
+                        <span className="font-normal text-stone-400 ml-1">（选填，MP4 里会有音乐）</span>
+                      </p>
+
+                      {/* 已选音乐提示条 */}
+                      {recMusicUrl && (
+                        <div className="flex items-center gap-2 bg-shelf-50 border border-shelf-200 rounded-xl px-3 py-2 mb-2">
+                          <span className="text-xs text-shelf-700 flex-1 truncate">♪ {recMusicTitle}</span>
+                          <button type="button"
+                            onClick={() => { setRecMusicUrl(""); setRecMusicTitle(""); setMusResults([]); }}
+                            className="text-stone-400 hover:text-stone-600 text-xs shrink-0">✕</button>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleMusicSearch} className="flex gap-2">
+                        <input value={musQuery} onChange={(e) => setMusQuery(e.target.value)}
+                          placeholder="搜音乐，如 calm、piano、lofi…"
+                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
+                        <button type="submit" disabled={musSearching}
+                          className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
+                          {musSearching ? "…" : "搜"}
+                        </button>
+                      </form>
+                      {musSearchErr && <p className="text-xs text-red-500 mt-1">{musSearchErr}</p>}
+
+                      {/* 音乐结果列表 */}
+                      {musResults.length > 0 && (
+                        <div className="mt-2 space-y-1.5 max-h-44 overflow-y-auto">
+                          {musResults.map((m) => {
+                            // 音频走代理路由：绕过 Jamendo CDN 的 CORS 限制
+                            const proxied = `/api/music/proxy?url=${encodeURIComponent(m.previewUrl)}`;
+                            return (
+                              <div key={m.id}
+                                onClick={() => { setRecMusicUrl(m.previewUrl); setRecMusicTitle(m.title); }}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-colors ${
+                                  recMusicUrl === m.previewUrl
+                                    ? "bg-shelf-50 border border-shelf-300"
+                                    : "bg-stone-50 hover:bg-stone-100"
+                                }`}>
+                                {/* 预览播放：通过代理 URL 避免 CORS 问题 */}
+                                <button type="button"
+                                  onClick={(e) => { e.stopPropagation(); new Audio(proxied).play(); }}
+                                  className="w-6 h-6 rounded-full bg-shelf-500 hover:bg-shelf-600 text-white flex items-center justify-center shrink-0 text-[9px] transition-colors">
+                                  ▶
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-ink truncate">{m.title}</p>
+                                  <p className="text-[10px] text-ink-muted">
+                                    {m.author} · {Math.floor(m.duration / 60)}:{String(m.duration % 60).padStart(2, "0")}
+                                  </p>
+                                </div>
+                                {recMusicUrl === m.previewUrl && (
+                                  <span className="text-shelf-600 text-[10px] font-medium shrink-0">✓ 已选</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

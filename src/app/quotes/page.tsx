@@ -4,14 +4,19 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
 import type { QuoteBook } from "@/app/api/quotes/route";
+import type { CardStyle } from "./QuoteStudio";
 
-// QuoteStudio 依赖 html2canvas（需要 DOM API），必须关闭 SSR
+// QuoteStudio 依赖 DOM API，必须关闭 SSR
 const QuoteStudio = dynamic(() => import("./QuoteStudio"), { ssr: false });
 
 // ── 工具函数 ─────────────────────────────────────────────────────
 
 function likeKey(pageId: string, idx: number) {
   return `q:${pageId}:${idx}`;
+}
+
+function cardStyleKey(pageId: string, idx: number) {
+  return `qs-style:${pageId}:${idx}`;
 }
 
 const LIKES_STORAGE_KEY = "lovely-shelf-liked-quotes";
@@ -21,33 +26,79 @@ function loadLikes(): Set<string> {
   try {
     const raw = localStorage.getItem(LIKES_STORAGE_KEY);
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch {
-    return new Set();
-  }
+  } catch { return new Set(); }
 }
 
 function saveLikes(likes: Set<string>) {
   localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify([...likes]));
 }
 
+function loadCardStyle(key: string): CardStyle | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as CardStyle) : undefined;
+  } catch { return undefined; }
+}
+
+// ── 导出所有语录 ─────────────────────────────────────────────────
+
+function dlFile(content: string, filename: string, type: string) {
+  const blob = new Blob(["﻿" + content], { type: `${type};charset=utf-8` });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportMarkdown(allQuotes: { text: string; book: QuoteBook }[]) {
+  const date = new Date().toLocaleDateString("zh-CN");
+  const byBook = new Map<string, { book: QuoteBook; texts: string[] }>();
+  for (const { text, book } of allQuotes) {
+    const entry = byBook.get(book.pageId);
+    if (entry) entry.texts.push(text);
+    else byBook.set(book.pageId, { book, texts: [text] });
+  }
+  let md = `# 语录导出 · ${date}\n\n`;
+  for (const { book, texts } of byBook.values()) {
+    md += `## 《${book.bookTitle}》`;
+    if (book.author) md += ` — ${book.author}`;
+    md += "\n\n";
+    for (const t of texts) md += `> ${t}\n\n`;
+    md += "---\n\n";
+  }
+  dlFile(md, `语录-${date}.md`, "text/markdown");
+}
+
+function exportTSV(allQuotes: { text: string; book: QuoteBook }[]) {
+  const header = "语录\t来源书名\t作者\tNotion链接";
+  const rows = allQuotes.map(({ text, book }) =>
+    [text, book.bookTitle, book.author, book.notionUrl].join("\t")
+  );
+  const date = new Date().toLocaleDateString("zh-CN");
+  dlFile([header, ...rows].join("\n"), `语录-${date}.tsv`, "text/tab-separated-values");
+}
+
 // ── 主页面 ───────────────────────────────────────────────────────
 
 // StudioTarget 描述"打开语录卡制作室时的初始状态"
-// canSave=true → 新增模式（显示"保存到 Notion"按钮）
-// canSave=false → 编辑导出模式（只能改背景 / 导出 PNG）
 type StudioTarget = {
   initialText:      string;
   initialBookTitle: string;
   initialAuthor:    string;
   canSave:          boolean;
+  styleKey?:        string;       // localStorage key，制作室用来保存/读取样式
+  initialStyle?:    CardStyle;    // 上次使用的样式（若有）
 };
 
 export default function QuotesPage() {
-  const [books,   setBooks]   = useState<QuoteBook[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
-  const [likes,   setLikes]   = useState<Set<string>>(new Set());
-  const [studio,  setStudio]  = useState<StudioTarget | null>(null);
+  const [books,      setBooks]      = useState<QuoteBook[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
+  const [likes,      setLikes]      = useState<Set<string>>(new Set());
+  const [studio,     setStudio]     = useState<StudioTarget | null>(null);
+  const [showExport, setShowExport] = useState(false);
 
   useEffect(() => {
     setLikes(loadLikes());
@@ -64,17 +115,28 @@ export default function QuotesPage() {
   function toggleLike(key: string) {
     setLikes((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) next.delete(key); else next.add(key);
       saveLikes(next);
       return next;
     });
   }
 
-  // 新语录保存后：乐观更新插到列表最前面，关闭制作室
   function handleQuoteSaved(book: QuoteBook) {
     setBooks((prev) => [book, ...prev]);
     setStudio(null);
+  }
+
+  function openStudio(text: string, book: QuoteBook, idx: number) {
+    const key   = cardStyleKey(book.pageId, idx);
+    const saved = loadCardStyle(key);
+    setStudio({
+      initialText:      text,
+      initialBookTitle: book.bookTitle,
+      initialAuthor:    book.author,
+      canSave:          false,
+      styleKey:         key,
+      initialStyle:     saved,
+    });
   }
 
   const allQuotes = books.flatMap((book) =>
@@ -87,7 +149,6 @@ export default function QuotesPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-8">
-          {/* 标题行：左边文字，右边 + 按钮 */}
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-ink mb-1">语录</h1>
@@ -97,15 +158,50 @@ export default function QuotesPage() {
                 共 {allQuotes.length} 句
               </p>
             </div>
-            {/* + 按钮：打开"新增"模式的制作室 */}
-            <button
-              type="button"
-              onClick={() => setStudio({ initialText: "", initialBookTitle: "", initialAuthor: "", canSave: true })}
-              className="shrink-0 w-9 h-9 bg-shelf-500 hover:bg-shelf-600 text-white rounded-full shadow flex items-center justify-center text-xl transition-colors"
-              aria-label="添加语录"
-            >
-              +
-            </button>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {/* 导出按钮（下拉）*/}
+              {allQuotes.length > 0 && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowExport((v) => !v)}
+                    className="h-9 px-3 rounded-xl border border-stone-200 text-sm text-ink-muted hover:text-ink hover:border-stone-300 transition-colors flex items-center gap-1"
+                  >
+                    ⬇ 导出
+                    <span className="text-[10px] text-stone-400">{showExport ? "▲" : "▼"}</span>
+                  </button>
+                  {showExport && (
+                    <div className="absolute right-0 top-full mt-1 bg-white border border-stone-100 rounded-xl shadow-lg py-1 z-10 min-w-[120px]">
+                      <button
+                        type="button"
+                        onClick={() => { exportMarkdown(allQuotes); setShowExport(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-stone-50 transition-colors"
+                      >
+                        📝 Markdown
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { exportTSV(allQuotes); setShowExport(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-stone-50 transition-colors"
+                      >
+                        📊 表格 (TSV)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* + 新增语录 */}
+              <button
+                type="button"
+                onClick={() => setStudio({ initialText: "", initialBookTitle: "", initialAuthor: "", canSave: true })}
+                className="w-9 h-9 bg-shelf-500 hover:bg-shelf-600 text-white rounded-full shadow flex items-center justify-center text-xl transition-colors"
+                aria-label="添加语录"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
@@ -130,13 +226,7 @@ export default function QuotesPage() {
                   book={book}
                   liked={likes.has(key)}
                   onToggle={() => toggleLike(key)}
-                  // 🎨 按钮：打开"导出"模式，文字预填，不显示保存按钮
-                  onMakeCard={() => setStudio({
-                    initialText:      text,
-                    initialBookTitle: book.bookTitle,
-                    initialAuthor:    book.author,
-                    canSave:          false,
-                  })}
+                  onMakeCard={() => openStudio(text, book, idx)}
                 />
               );
             })}
@@ -144,12 +234,13 @@ export default function QuotesPage() {
         )}
       </main>
 
-      {/* 语录卡制作室（兼顾新增保存 + 编辑导出两种模式）*/}
       {studio && (
         <QuoteStudio
           initialText={studio.initialText}
           initialBookTitle={studio.initialBookTitle}
           initialAuthor={studio.initialAuthor}
+          initialStyle={studio.initialStyle}
+          styleKey={studio.styleKey}
           onSaved={studio.canSave ? handleQuoteSaved : undefined}
           onClose={() => setStudio(null)}
         />
@@ -187,7 +278,6 @@ function QuoteCard({
         </p>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            {/* 已收藏标签 */}
             {liked && (
               <span className="inline-flex items-center gap-1 text-xs text-red-500 mb-1">
                 <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current shrink-0">
@@ -201,7 +291,6 @@ function QuoteCard({
               {book.bookTitle}
             </a>
             {book.author && <p className="text-xs text-ink-muted mt-0.5">{book.author}</p>}
-            {/* 音乐 / 视频链接 */}
             <div className="flex gap-2 mt-1 flex-wrap">
               {book.musicUrl && (
                 <a href={book.musicUrl} target="_blank" rel="noopener noreferrer"
@@ -218,11 +307,16 @@ function QuoteCard({
             </div>
           </div>
 
-          {/* 制作卡片按钮 */}
-          <button type="button" onClick={onMakeCard} title="制作语录卡"
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-shelf-500 hover:bg-shelf-50 transition-colors text-base">
-            🎨
-          </button>
+          {/* 🎨 制作卡片：自定义 tooltip，hover 立即显示 */}
+          <div className="relative group shrink-0">
+            <button type="button" onClick={onMakeCard}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-shelf-500 hover:bg-shelf-50 transition-colors text-base">
+              🎨
+            </button>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-ink text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              制作语录卡
+            </span>
+          </div>
 
           {/* 收藏按钮 */}
           <button type="button" onClick={onToggle}
