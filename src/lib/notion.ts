@@ -430,6 +430,71 @@ export async function fetchManualPageQuotes(pageId: string): Promise<string[]> {
   return quotes;
 }
 
+// 读取"手动语录"页面所有 quote block，带 id 和 type，供更新时定位
+async function fetchManualPageBlockInfo(
+  pageId: string,
+): Promise<{ id: string; type: "callout" | "paragraph" }[]> {
+  const blocks: { id: string; type: "callout" | "paragraph" }[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const url = `https://api.notion.com/v1/blocks/${pageId}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ""}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${NOTION_TOKEN}`, "Notion-Version": "2022-06-28" },
+    });
+    const data = (await res.json()) as {
+      results: {
+        id: string;
+        type: string;
+        paragraph?: { rich_text: { plain_text: string }[] };
+        callout?:   { rich_text: { plain_text: string }[] };
+      }[];
+      has_more: boolean;
+      next_cursor: string | null;
+    };
+
+    for (const block of data.results) {
+      if (block.type !== "callout" && block.type !== "paragraph") continue;
+      const richText = block.type === "callout" ? block.callout?.rich_text : block.paragraph?.rich_text;
+      // 只收录有实际文字的 block，保持与 fetchManualPageQuotes 一致的顺序
+      if (richText?.some((r) => r.plain_text.trim())) {
+        blocks.push({ id: block.id, type: block.type });
+      }
+    }
+    cursor = data.has_more && data.next_cursor ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return blocks;
+}
+
+// 更新"手动语录"页面中第 quoteIdx 条语录的文字
+export async function updateManualQuote(
+  pageId: string,
+  quoteIdx: number,
+  newText: string,
+): Promise<void> {
+  const blocks = await fetchManualPageBlockInfo(pageId);
+  const block  = blocks[quoteIdx];
+  if (!block) throw new Error(`找不到第 ${quoteIdx} 条语录 block`);
+
+  // PATCH /v1/blocks/{blockId}：更新该 block 的 rich_text 内容
+  const body = block.type === "callout"
+    ? { callout:   { rich_text: [{ type: "text", text: { content: newText.trim() } }], icon: { type: "emoji", emoji: "✨" }, color: "blue_background" } }
+    : { paragraph: { rich_text: [{ type: "text", text: { content: newText.trim() } }] } };
+
+  const res = await fetch(`https://api.notion.com/v1/blocks/${block.id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error(`更新语录失败：${await res.text()}`);
+}
+
 // 把一条语句作为 paragraph block 追加到"手动语录"页面正文
 export async function appendManualQuote(
   text: string,

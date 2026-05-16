@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
-import { createManualQuote, appendManualQuote, fetchManualPageQuotes } from "@/lib/notion";
+import { createManualQuote, appendManualQuote, fetchManualPageQuotes, updateManualQuote } from "@/lib/notion";
 import { preprocessImage } from "@/lib/image";
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
@@ -203,4 +203,29 @@ export async function POST(request: Request) {
   };
 
   return NextResponse.json({ book });
+}
+
+// PATCH：更新"手动语录"页面中某条语录的文字
+// body: { pageId, quoteIdx, newText }
+export async function PATCH(request: Request) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
+
+  const { pageId, quoteIdx, newText } = (await request.json()) as {
+    pageId:    string;
+    quoteIdx:  number;
+    newText:   string;
+  };
+
+  if (!pageId || typeof quoteIdx !== "number" || !newText?.trim()) {
+    return NextResponse.json({ error: "参数不完整" }, { status: 400 });
+  }
+
+  try {
+    await updateManualQuote(pageId, quoteIdx, newText);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[api/quotes PATCH]", e);
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 }

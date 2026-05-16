@@ -144,8 +144,8 @@ export default function QuotesPage() {
       canSave:          false,
       styleKey:         key,
       initialStyle:     saved,
-      // 文字被修改后，只更新本地 books state（不写回 Notion）
       onTextChanged: (newText: string) => {
+        // 先更新本地显示（立即生效，不等网络）
         setBooks((prev) =>
           prev.map((b) =>
             b.pageId !== book.pageId ? b : {
@@ -154,6 +154,14 @@ export default function QuotesPage() {
             }
           )
         );
+        // 手动语录才同步到 Notion（书库语录的文字不写回）
+        if (book.bookTitle === "手动语录") {
+          fetch("/api/quotes", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pageId: book.pageId, quoteIdx: idx, newText }),
+          }).catch((e) => console.warn("[updateManualQuote]", e));
+        }
       },
     });
   }
