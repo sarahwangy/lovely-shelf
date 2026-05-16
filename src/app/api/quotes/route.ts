@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
-import { createManualQuote } from "@/lib/notion";
+import { createManualQuote, appendManualQuote } from "@/lib/notion";
 import { preprocessImage } from "@/lib/image";
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
@@ -61,7 +61,9 @@ export async function GET() {
 
     for (const page of data.results) {
       const props   = page.properties;
-      const rawText = props[NOTION_FIELDS.quotes]?.rich_text?.[0]?.plain_text ?? "";
+      // rich_text 可能被分成多段（超过 2000 字符时），合并所有段
+      const rawText = (props[NOTION_FIELDS.quotes]?.rich_text ?? [])
+        .map((r) => r.plain_text).join("");
       const quotes  = rawText ? rawText.split("\n").filter(Boolean) : [];
       if (quotes.length === 0) continue;
 
@@ -100,7 +102,26 @@ export async function POST(request: Request) {
 
   if (!text?.trim()) return NextResponse.json({ error: "语句不能为空" }, { status: 400 });
 
-  // 本地图片：先通过 sharp 压缩成 JPEG，再上传 Notion
+  // 无书名 → 追加到 Notion "手动语录" 固定页面
+  if (!bookTitle?.trim()) {
+    const { pageId, pageUrl, allQuotes } = await appendManualQuote(text.trim(), {
+      musicUrl: musicUrl ?? undefined,
+      videoUrl: videoUrl ?? undefined,
+    });
+    const book: QuoteBook = {
+      pageId,
+      notionUrl: pageUrl,
+      bookTitle: "手动语录",
+      author:    "",
+      coverUrl:  null,
+      quotes:    allQuotes,
+      musicUrl:  musicUrl?.trim() || null,
+      videoUrl:  videoUrl?.trim() || null,
+    };
+    return NextResponse.json({ book });
+  }
+
+  // 有书名 → 创建新书页面（原有逻辑）
   let coverBuffer: Buffer | undefined;
   if (imageFile && imageFile.size > 0) {
     const raw       = Buffer.from(await imageFile.arrayBuffer());
@@ -109,7 +130,7 @@ export async function POST(request: Request) {
   }
 
   const { pageId, pageUrl } = await createManualQuote(text, {
-    bookTitle:        bookTitle ?? undefined,
+    bookTitle:        bookTitle,
     author:           author ?? undefined,
     coverBuffer,
     coverExternalUrl: (!coverBuffer && imageUrl) ? imageUrl : undefined,
@@ -120,9 +141,8 @@ export async function POST(request: Request) {
   const book: QuoteBook = {
     pageId,
     notionUrl: pageUrl,
-    bookTitle: bookTitle?.trim() || "📝 手动语录",
+    bookTitle: bookTitle.trim(),
     author:    author?.trim() || "",
-    // 本地上传：文件已存 Notion，但临时 URL 需刷新才有；外链 URL 可直接用
     coverUrl:  coverBuffer ? null : (imageUrl ?? null),
     quotes:    [text.trim()],
     musicUrl:  musicUrl?.trim() || null,

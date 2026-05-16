@@ -527,16 +527,6 @@ export default function QuoteStudio({
   // ── 保存 ─────────────────────────────────────────────────────────
   async function handleSave() {
     if (!text.trim() || !onSaved) return;
-    // 无书名 → 仅本地展示，不写 Notion
-    if (!bookTitle.trim()) {
-      onSaved({
-        pageId: `local-${Date.now()}`, notionUrl: "",
-        bookTitle: "📝 手动语录", author: author.trim() || "",
-        coverUrl: null, quotes: [text.trim()],
-        musicUrl: musicUrl.trim() || null, videoUrl: videoUrl.trim() || null,
-      });
-      return;
-    }
     setSaving(true); setSaveError(null);
     try {
       const fd = new FormData();

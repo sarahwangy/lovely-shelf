@@ -123,7 +123,13 @@ export default function QuotesPage() {
   }
 
   function handleQuoteSaved(book: QuoteBook) {
-    setBooks((prev) => [book, ...prev]);
+    setBooks((prev) => {
+      // 若"手动语录"页已在列表中，替换它（追加了新语句）；否则插到最前面
+      const exists = prev.some((b) => b.pageId === book.pageId);
+      return exists
+        ? prev.map((b) => (b.pageId === book.pageId ? book : b))
+        : [book, ...prev];
+    });
     setStudio(null);
   }
 
@@ -145,8 +151,8 @@ export default function QuotesPage() {
   );
 
   const filteredQuotes = allQuotes.filter(({ text, idx, book }) => {
-    if (tab === "manual") return book.pageId.startsWith("local-");
-    if (tab === "notion") return !book.pageId.startsWith("local-");
+    if (tab === "manual") return book.bookTitle === "手动语录";
+    if (tab === "notion") return book.bookTitle !== "手动语录";
     if (tab === "liked")  return likes.has(likeKey(book.pageId, idx));
     return true; // "all"
   });
@@ -183,7 +189,7 @@ export default function QuotesPage() {
                     onClick={() => setShowExport((v) => !v)}
                     className="h-9 px-3 rounded-xl border border-stone-200 text-sm text-ink-muted hover:text-ink hover:border-stone-300 transition-colors flex items-center gap-1"
                   >
-                    ⬇ 导出
+                    ⬇ 导出全部
                     <span className="text-[10px] text-stone-400">{showExport ? "▲" : "▼"}</span>
                   </button>
                   {showExport && (
@@ -323,7 +329,7 @@ function QuoteCard({
 
       {/* 内容区：pb-9 留出右下角按钮的空间 */}
       <div className="flex-1 min-w-0 pb-9">
-        <p className="text-ink text-base leading-relaxed border-l-2 border-shelf-300 pl-3 mb-3">
+        <p className="text-ink text-base leading-relaxed border-l-2 border-shelf-300 pl-3 mb-3 break-words">
           {text}
         </p>
         <div className="min-w-0">

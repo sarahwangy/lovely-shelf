@@ -361,6 +361,92 @@ export async function listAllBooksByGenre(genre: string): Promise<BookSummary[]>
   return books;
 }
 
+// 把文字按 1900 字符分段（Notion rich_text 单段上限 2000 字符）
+function toRichTextSegments(text: string) {
+  const segs: { text: { content: string } }[] = [];
+  for (let i = 0; i < text.length; i += 1900) {
+    segs.push({ text: { content: text.slice(i, i + 1900) } });
+  }
+  return segs.length ? segs : [{ text: { content: "" } }];
+}
+
+// 追加语句到 Notion 中固定的"手动语录"页面
+// 若该页面不存在则自动创建；返回更新后的全部语句
+export async function appendManualQuote(
+  text: string,
+  opts: { musicUrl?: string; videoUrl?: string } = {},
+): Promise<{ pageId: string; pageUrl: string; allQuotes: string[] }> {
+  const { musicUrl, videoUrl } = opts;
+
+  // 搜索书名 = "手动语录" 的页面
+  const searchRes = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      filter: { property: NOTION_FIELDS.title, title: { equals: "手动语录" } },
+      page_size: 1,
+    }),
+  });
+
+  const searchData = (await searchRes.json()) as {
+    results: {
+      id: string;
+      properties: Record<string, { rich_text?: { plain_text: string }[] }>;
+    }[];
+  };
+
+  let pageId: string;
+  let currentQuotes: string[] = [];
+
+  if (searchData.results?.length > 0) {
+    // 找到页面：读出当前所有语句
+    const page = searchData.results[0];
+    pageId = page.id;
+    const rawText = (page.properties[NOTION_FIELDS.quotes]?.rich_text ?? [])
+      .map((r) => r.plain_text)
+      .join("");
+    currentQuotes = rawText ? rawText.split("\n").filter(Boolean) : [];
+  } else {
+    // 不存在则新建一个空的"手动语录"页
+    const newPage = await notion.pages.create({
+      parent: { database_id: DATABASE_ID },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: {
+        [NOTION_FIELDS.title]:       { title:     [{ text: { content: "手动语录" } }] },
+        [NOTION_FIELDS.author]:      { rich_text: [{ text: { content: "" } }] },
+        [NOTION_FIELDS.genres]:      { multi_select: [] },
+        [NOTION_FIELDS.description]: { rich_text: [{ text: { content: "" } }] },
+        [NOTION_FIELDS.quotes]:      { rich_text: [{ text: { content: "" } }] },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    });
+    pageId = newPage.id;
+  }
+
+  // 拼接新语句，按 1900 字符分段更新 Notion
+  const allQuotes = [...currentQuotes, text.trim()];
+  const fullText  = allQuotes.join("\n");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const properties: Record<string, any> = {
+    [NOTION_FIELDS.quotes]: { rich_text: toRichTextSegments(fullText) },
+  };
+  if (musicUrl) properties[NOTION_FIELDS.music] = { url: musicUrl };
+  if (videoUrl) properties[NOTION_FIELDS.video] = { url: videoUrl };
+
+  await notion.pages.update({ page_id: pageId, properties });
+
+  return {
+    pageId,
+    pageUrl: `https://notion.so/${pageId.replace(/-/g, "")}`,
+    allQuotes,
+  };
+}
+
 // 手动添加一条语录，支持图片封面（本地上传或外链）、音乐/视频 URL
 export async function createManualQuote(
   text: string,
