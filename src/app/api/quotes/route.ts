@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
-import { createManualQuote, appendManualQuote } from "@/lib/notion";
+import { createManualQuote, appendManualQuote, fetchManualPageQuotes } from "@/lib/notion";
 import { preprocessImage } from "@/lib/image";
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
@@ -27,7 +27,13 @@ export async function GET() {
 
   do {
     const body: Record<string, unknown> = {
-      filter: { property: NOTION_FIELDS.quotes, rich_text: { is_not_empty: true } },
+      // "手动语录"页面正文用 Block 存语句，不走属性字段；单独处理，这里排除
+      filter: {
+        and: [
+          { property: NOTION_FIELDS.quotes, rich_text: { is_not_empty: true } },
+          { property: NOTION_FIELDS.title,  title:     { does_not_equal: "手动语录" } },
+        ],
+      },
       sorts:  [{ timestamp: "created_time", direction: "descending" }],
       page_size: 100,
     };
@@ -82,6 +88,53 @@ export async function GET() {
 
     cursor = data.has_more && data.next_cursor ? data.next_cursor : undefined;
   } while (cursor);
+
+  // 单独查"手动语录"页面，从正文 Block 读语句
+  try {
+    const manualRes = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filter: { property: NOTION_FIELDS.title, title: { equals: "手动语录" } },
+        page_size: 1,
+      }),
+    });
+    if (manualRes.ok) {
+      const manualData = (await manualRes.json()) as {
+        results: {
+          id: string;
+          properties: Record<string, {
+            url?: string | null;
+            files?: { file?: { url: string }; external?: { url: string } }[];
+          }>;
+        }[];
+      };
+      if (manualData.results?.length > 0) {
+        const page     = manualData.results[0];
+        const quotes   = await fetchManualPageQuotes(page.id);
+        if (quotes.length > 0) {
+          const props    = page.properties;
+          const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
+          books.unshift({          // 手动语录排在最前面
+            pageId:    page.id,
+            notionUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
+            bookTitle: "手动语录",
+            author:    "",
+            coverUrl:  coverFile?.file?.url ?? coverFile?.external?.url ?? null,
+            quotes,
+            musicUrl:  props[NOTION_FIELDS.music]?.url ?? null,
+            videoUrl:  props[NOTION_FIELDS.video]?.url ?? null,
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[api/quotes] 手动语录 block 读取失败:", e);
+  }
 
   return NextResponse.json({ books });
 }
