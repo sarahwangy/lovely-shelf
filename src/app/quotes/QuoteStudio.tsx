@@ -479,12 +479,6 @@ export default function QuoteStudio({
 
       let y = vPos === "top" ? padX : vPos === "bottom" ? H * 0.45 : H * 0.28;
 
-      // 开头引号
-      ctx.font = `bold ${28*SCALE}px Georgia, serif`;
-      ctx.globalAlpha = 0.6;
-      ctx.fillText('"', xPos, y); y += 10*SCALE;
-      ctx.globalAlpha = 1;
-
       // 语句（自动换行）
       ctx.font = `600 ${fontPx[fontSize]}px -apple-system, system-ui, sans-serif`;
       const lines = wrapCanvasText(ctx, text || "在这里输入你的语句…", W - padX * 2);
@@ -627,8 +621,6 @@ export default function QuoteStudio({
 
                 {/* 卡片内容 */}
                 <div className={`relative z-10 px-5 w-full flex flex-col gap-2 ${itemsClass} ${paddingClass}`}>
-                  <span className="text-4xl leading-none font-serif"
-                    style={{ color: textColor, textShadow, opacity: 0.6 }}>"</span>
                   <p className={`leading-relaxed font-medium w-full ${FONT_SIZE_CLASS[fontSize]} ${textAlignClass}`}
                     style={{ color: textColor, textShadow }}>
                     {text || "在这里输入你的语句…"}

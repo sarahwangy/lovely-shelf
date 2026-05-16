@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ProcessResult } from "@/app/page";
 import type { BookSummary } from "@/types/book";
 import BookDetailModal from "@/components/BookDetailModal";
+import NavBar from "@/components/NavBar";
 
 export default function ResultPage() {
   const router = useRouter();
@@ -46,16 +47,11 @@ export default function ResultPage() {
 
   return (
     <div className="min-h-screen bg-shelf-50">
-      {/* ── Header ── */}
-      <header className="bg-white border-b border-stone-100 px-5 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-shelf-500 rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm">📚</span>
-          </div>
-          <span className="font-semibold text-ink text-lg tracking-tight">lovely-shelf</span>
-        </div>
-        {/* 汇总：几张成功几张失败 */}
-        <div className="flex items-center gap-3 text-xs">
+      <NavBar />
+
+      {/* 上传结果汇总条 */}
+      {(successCount > 0 || duplicateCount > 0 || errorCount > 0) && (
+        <div className="bg-white border-b border-stone-100 px-5 py-2.5 flex items-center justify-center gap-3 text-xs">
           {successCount > 0 && (
             <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
               ✓ {successCount} 张入库
@@ -72,7 +68,7 @@ export default function ResultPage() {
             </span>
           )}
         </div>
-      </header>
+      )}
 
       <main className="max-w-xl mx-auto px-4 py-6">
         {/* 标题区 */}
