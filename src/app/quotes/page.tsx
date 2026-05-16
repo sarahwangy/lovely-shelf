@@ -99,6 +99,7 @@ export default function QuotesPage() {
   const [likes,      setLikes]      = useState<Set<string>>(new Set());
   const [studio,     setStudio]     = useState<StudioTarget | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [tab,        setTab]        = useState<"all" | "manual" | "notion" | "liked">("all");
 
   useEffect(() => {
     setLikes(loadLikes());
@@ -143,6 +144,20 @@ export default function QuotesPage() {
     book.quotes.map((text, idx) => ({ text, idx, book }))
   );
 
+  const filteredQuotes = allQuotes.filter(({ text, idx, book }) => {
+    if (tab === "manual") return book.pageId.startsWith("local-");
+    if (tab === "notion") return !book.pageId.startsWith("local-");
+    if (tab === "liked")  return likes.has(likeKey(book.pageId, idx));
+    return true; // "all"
+  });
+
+  const TABS: { key: typeof tab; label: string; icon: string }[] = [
+    { key: "all",    label: "全部",    icon: "📖" },
+    { key: "manual", label: "手写",    icon: "✍️" },
+    { key: "notion", label: "书库语录", icon: "📚" },
+    { key: "liked",  label: "已收藏",  icon: "❤️" },
+  ];
+
   return (
     <div className="min-h-screen bg-stone-50">
       <NavBar />
@@ -155,7 +170,7 @@ export default function QuotesPage() {
               <p className="text-sm text-ink-muted leading-relaxed">
                 这里是你治愈心灵、平静内心的小天地
                 <span className="mx-1.5">·</span>
-                共 {allQuotes.length} 句
+                {tab === "all" ? `共 ${allQuotes.length} 句` : `${filteredQuotes.length} / ${allQuotes.length} 句`}
               </p>
             </div>
 
@@ -205,6 +220,27 @@ export default function QuotesPage() {
           </div>
         </div>
 
+        {/* Tab 切换栏 */}
+        {!loading && !error && allQuotes.length > 0 && (
+          <div className="flex gap-1 bg-stone-100 rounded-2xl p-1 mb-6">
+            {TABS.map(({ key, label, icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  tab === key
+                    ? "bg-white text-ink shadow-sm"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                <span className="text-base leading-none">{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading && <div className="text-center py-20 text-ink-muted">加载中…</div>}
         {error   && <div className="text-center py-20 text-red-400">{error}</div>}
 
@@ -215,9 +251,22 @@ export default function QuotesPage() {
           </div>
         )}
 
-        {allQuotes.length > 0 && (
+        {!loading && !error && allQuotes.length > 0 && filteredQuotes.length === 0 && (
+          <div className="text-center py-16 text-ink-muted">
+            <p className="text-3xl mb-3">
+              {tab === "manual" ? "✍️" : tab === "liked" ? "🤍" : "📚"}
+            </p>
+            <p className="text-sm">
+              {tab === "manual" ? "还没有手写语录，点击 + 手动添加" :
+               tab === "liked"  ? "还没有收藏，点击语录卡上的心形收藏" :
+                                  "还没有书库语录，去上传书籍后会自动同步"}
+            </p>
+          </div>
+        )}
+
+        {filteredQuotes.length > 0 && (
           <div className="flex flex-col gap-4">
-            {allQuotes.map(({ text, idx, book }) => {
+            {filteredQuotes.map(({ text, idx, book }) => {
               const key = likeKey(book.pageId, idx);
               return (
                 <QuoteCard
