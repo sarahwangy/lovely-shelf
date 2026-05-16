@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
 import { createManualQuote, appendManualQuote, fetchManualPageQuotes, updateManualQuote } from "@/lib/notion";
 import { preprocessImage } from "@/lib/image";
+import { DEMO_BOOKS } from "@/lib/demo-data";
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
@@ -21,6 +22,11 @@ export type QuoteBook = {
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
+
+  // Demo 模式：返回种子假数据，不调用 Notion
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json({ books: DEMO_BOOKS });
+  }
 
   const books: QuoteBook[] = [];
   let cursor: string | undefined;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
 import type { BookSummary } from "@/types/book";
+import { buildDemoStats } from "@/lib/demo-data";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
@@ -174,6 +175,11 @@ export async function GET() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "未登录" }, { status: 401 });
+  }
+
+  // Demo 模式：返回种子假统计，不调用 Notion
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json(buildDemoStats());
   }
 
   // 缓存未过期时直接返回

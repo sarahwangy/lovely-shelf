@@ -1,23 +1,17 @@
-// 登录页：Server Component（无 "use client"），可以直接用 Server Action
-// Server Action 让表单提交直接在服务端运行，不需要写 fetch 或 API 路由
 import { signIn } from "@/auth";
 
 export default function LoginPage() {
-  // 服务端直接读取环境变量，决定是否显示 Demo 按钮
-  // 这段代码只在服务端运行，env var 不会暴露给浏览器
-  const demoEnabled = process.env.DEMO_ENABLED === "true";
-
   return (
     <div className="min-h-dvh flex items-center justify-center bg-shelf-50 px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-8 w-full max-w-sm text-center">
-        {/* Logo 区 */}
+        {/* Logo */}
         <div className="w-14 h-14 bg-shelf-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm">
           <span className="text-2xl">📚</span>
         </div>
         <h1 className="text-xl font-bold text-ink mb-1">lovely-shelf</h1>
         <p className="text-sm text-ink-muted mb-8">把书封面变成书库</p>
 
-        {/* Google 登录按钮 */}
+        {/* Google 登录：真实数据（书架主人专用）*/}
         <form
           action={async () => {
             "use server";
@@ -28,7 +22,6 @@ export default function LoginPage() {
             type="submit"
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-stone-200 hover:border-shelf-300 hover:bg-shelf-50 text-ink font-medium py-3 px-4 rounded-xl transition-colors"
           >
-            {/* Google 彩色 G 图标（SVG，不依赖任何库）*/}
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -39,39 +32,31 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo 体验按钮：仅 DEMO_ENABLED=true 时显示 */}
-        {demoEnabled && (
-          <>
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px bg-stone-100" />
-              <span className="text-xs text-ink-muted">或</span>
-              <div className="flex-1 h-px bg-stone-100" />
-            </div>
+        {/* 分隔线 */}
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-stone-100" />
+          <span className="text-xs text-ink-muted">或</span>
+          <div className="flex-1 h-px bg-stone-100" />
+        </div>
 
-            <form
-              action={async () => {
-                "use server";
-                // Credentials provider：authorize() 不验证密码，直接返回 demo user
-                await signIn("credentials", { redirectTo: "/" });
-              }}
-            >
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white font-medium py-3 px-4 rounded-xl transition-colors"
-              >
-                🎪 一键体验 Demo
-              </button>
-            </form>
+        {/* Demo 体验：种子假数据，面试官/访客专用 */}
+        <form
+          action={async () => {
+            "use server";
+            await signIn("credentials", { redirectTo: "/" });
+          }}
+        >
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white font-medium py-3 px-4 rounded-xl transition-colors"
+          >
+            🎪 一键体验 Demo
+          </button>
+        </form>
 
-            <p className="text-xs text-ink-muted mt-3">
-              Demo 模式 · 数据为真实书架内容
-            </p>
-          </>
-        )}
-
-        {!demoEnabled && (
-          <p className="text-xs text-ink-light mt-6">仅限授权账号访问</p>
-        )}
+        <p className="text-xs text-ink-muted mt-3">
+          Demo 模式 · 展示示例数据，无需账号
+        </p>
       </div>
     </div>
   );
