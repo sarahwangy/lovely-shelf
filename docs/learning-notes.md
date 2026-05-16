@@ -609,3 +609,50 @@
 
 - **一句话总结：**
   Notion 页面里的"属性字段"和"正文内容"是完全不同的存储区域、不同的 API——前者适合结构化的书名/作者，后者适合自由内容（语录、笔记）；搞清楚这个区别，就能把数据存到用户真正期望看到的地方。
+
+---
+
+### T31 - QuoteStudio 样式编辑保存流程 + Notion Block 更新
+
+- **学到的核心概念：**
+  - **Modal 模式区分（mode detection via prop presence）**：同一个组件根据传入的 prop 是否存在来判断当前处于"创建"还是"编辑"模式。`onSaved` 有值 → 创建新语录；`onSaved` 为 undefined + `styleKey` 有值 → 编辑样式。避免了把两个模式写成两个组件的重复代码
+  - **Optimistic Update（乐观更新）**：先更新本地 React state 让 UI 立即响应，再异步调 API 同步到服务端。用户感觉到"瞬间保存"，就算网络慢也不阻塞交互
+  - **`PATCH /v1/blocks/{blockId}`**：Notion Block API 的更新端点。要更新某个 block 的内容，需要先知道它的 block ID（不是 page ID）。用 `GET /blocks/{pageId}/children` 拿到所有 block + 它们的 ID，按 index 定位后再 PATCH
+
+- **用到的关键 API/函数：**
+  - `fetchManualPageBlockInfo(pageId)` — 读取 block 列表，返回 `{ id, type }[]`，保持与 `fetchManualPageQuotes` 一样的过滤逻辑确保 index 对齐
+  - `updateManualQuote(pageId, quoteIdx, newText)` — 按 index 找到 block ID，PATCH 更新文字
+  - `PATCH /api/quotes` — 新增路由，接收 `{ pageId, quoteIdx, newText }`
+  - `onTextChanged?: (newText: string) => void` — QuoteStudio 新增回调 prop，文字改动时通知父组件
+
+- **容易踩的坑：**
+  - **Block index 和 quote index 必须对齐**：`fetchManualPageBlockInfo` 必须用和 `fetchManualPageQuotes` 完全一样的过滤条件（只收录 callout/paragraph 且有文字的 block），否则 index 会错位，更新了错误的 block
+  - **书库语录不写回 Notion**：书库语录的文字存在 DB 属性字段里，更新需要 PATCH 整个 `rich_text` 数组（多条语录换行拼接），风险高。本项目选择只更新本地 state，刷新后恢复原样
+
+- **一句话总结：**
+  "先本地更新、再异步同步"的乐观更新模式让 UI 感觉丝滑；Notion Block 更新的关键是先读出 block ID，不能只靠 page ID 和位置 index。
+
+---
+
+### T32 - Chat 页面重构：侧边栏 + 心跳动画 + AI 动态语录
+
+- **学到的核心概念：**
+  - **CSS `stroke-dasharray` + `stroke-dashoffset` 动画**：SVG 路径可以被"虚线化"。`dasharray=N` 让整条路径变成一段虚线；把 `dashoffset` 从 N 动画到 0，视觉上就像线条从无到有地被"画出来"。心电图动画就是这个原理
+  - **CSS `transform: scale()` 心跳**：用两段不等高的 scale 峰值（1.28 和 1.14）模拟心脏"扑通扑"的双峰跳动，比单次 scale 更真实
+  - **`SessionProvider` + `useSession`**：next-auth 的 session 通过 React Context 传递。`SessionProvider` 必须在 client 组件里，因此需要单独封装一个 `Providers.tsx`，在 layout.tsx（server component）里套在 children 外面
+  - **Prompt steering（提示引导）**：与其让 LLM 自由发挥（导致输出风格趋同），不如在服务端先随机抽取风格标签，再注入 prompt，强制模型在指定类别里生成。15 种风格均匀分布，爱自己主题占 5 种 ≈ 33%
+
+- **用到的关键 API/函数：**
+  - `@keyframes heartbeat` + `@keyframes ecg-draw`：CSS 动画，写在组件内的 `<style>` 标签里（不污染全局）
+  - `useSession()` from `next-auth/react`：客户端获取当前登录用户的 name/email
+  - `claude-haiku-4-5-20251001`：用 Haiku 而非 Sonnet 生成短语录——速度快 3-5 倍、费用低 ~20 倍，"用最便宜够用的模型"是控制 API 成本的行业惯例
+  - `useState(() => ...)` 懒初始化：传函数而非值，确保随机逻辑只在组件 mount 时执行一次
+  - `/api/daily-quote` GET 路由：随机抽风格 → 调 Claude → 解析 JSON → 返回 `{ zh, en }`
+
+- **容易踩的坑：**
+  - **Claude 偶尔在 JSON 外包裹 markdown 代码块**（如 ` ```json ... ``` `）：解析前需要用 `.replace(/^```json?\n?/, "")` 清除掉，否则 `JSON.parse` 会抛错
+  - **SessionProvider 不能在 server component 里直接使用**：layout.tsx 默认是 server component，必须通过 `Providers.tsx`（client component）中转
+  - **初始加载不调 API**：页面打开时显示种子语录（3 条硬编码），用户主动点"换一句"才调 Claude。避免每次进页面都消耗 API quota 且出现 loading 状态
+
+- **一句话总结：**
+  SVG 路径动画 + CSS keyframes 可以做出媲美设计软件的心跳效果；LLM 生成内容的多样性靠"上游随机抽类别再注入 prompt"来保证，而不是依赖模型自己的随机性。
