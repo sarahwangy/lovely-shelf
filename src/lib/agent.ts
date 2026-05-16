@@ -58,6 +58,7 @@ const AGENT_TOOLS: Anthropic.Messages.Tool[] = [
             country:     { type: "string" },
             genres:      { type: "array", items: { type: "string" } },
             description: { type: "string" },
+            quotes:      { type: "array", items: { type: "string" }, description: "2-3句优美语句" },
           },
           required: ["title", "author", "genres", "description"],
         },

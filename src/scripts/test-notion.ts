@@ -10,6 +10,7 @@ const fakeBook: BookInfo = {
   country: "英国",
   genres: ["科普", "心理相关"],
   description: "这是一本用来测试 Notion 写入功能的假书。",
+  quotes: ["知识是人类进步的阶梯。", "科学的尽头是哲学。"],
 };
 
 async function main() {

@@ -12,8 +12,7 @@ export const NOTION_FIELDS = {
   genres: "类型 Label",
   description: "描述",
   cover: "封面",
-  status: "状态",
-  sourceFilename: "原图文件名",
+  quotes: "优美语句",
 } as const;
 
 // 类型 Label 的预设选项，必须和 Notion 里一字不差
@@ -29,12 +28,5 @@ export const COUNTRY_OPTIONS = [
   "南非", "加拿大", "中国", "日本",
 ] as const;
 
-export const STATUS_VALUES = ["草稿", "已确认"] as const;
-
-// (typeof GENRE_LABELS)[number] 的含义：
-// typeof GENRE_LABELS → 拿到数组的类型：readonly ["回忆录", "传记", ...]
-// [number]            → 用数字下标索引，得到所有元素的联合类型："回忆录" | "传记" | ...
-// 效果：自动从数组派生出枚举类型，不用手动重复写一遍
 export type Genre = (typeof GENRE_LABELS)[number];
 export type Country = (typeof COUNTRY_OPTIONS)[number];
-export type Status = (typeof STATUS_VALUES)[number];

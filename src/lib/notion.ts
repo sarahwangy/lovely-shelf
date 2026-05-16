@@ -1,7 +1,6 @@
 import { Client } from "@notionhq/client";
 import type { CreatePageParameters } from "@notionhq/client/build/src/api-endpoints";
 import type { BookInfo, BookSummary, BookDetail } from "@/types/book";
-import type { Status } from "@/lib/notion-fields";
 import { NOTION_FIELDS } from "@/lib/notion-fields";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
@@ -62,7 +61,7 @@ type PageProperties = CreatePageParameters["properties"];
 export async function createBookPage(
   info: BookInfo,
   fileUploadId: string | null,
-  sourceFilename: string = ""
+  sourceFilename: string = "", // 保留参数避免改所有调用处，但不再写入 Notion
 ): Promise<{ pageId: string; pageUrl: string }> {
   // [NOTION_FIELDS.xxx] 是计算属性名：运行时把变量值当作 key
   // 好处：改字段名只改 notion-fields.ts，这里自动跟着变
@@ -91,11 +90,10 @@ export async function createBookPage(
     [NOTION_FIELDS.description]: {
       rich_text: [{ text: { content: info.description } }],
     },
-    [NOTION_FIELDS.status]: {
-      select: { name: "草稿" },
-    },
-    [NOTION_FIELDS.sourceFilename]: {
-      rich_text: [{ text: { content: sourceFilename } }],
+    // quotes 数组用换行拼成一段文字存入 rich_text
+    // 读取时再按换行切割回数组
+    [NOTION_FIELDS.quotes]: {
+      rich_text: [{ text: { content: (info.quotes ?? []).join("\n") } }],
     },
   };
 
@@ -225,6 +223,8 @@ export async function listBooksByGenre(
       // 封面是 Files 属性：自己上传的是 file.url，外链是 external.url
       const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
       const coverUrl = coverFile?.file?.url ?? coverFile?.external?.url ?? null;
+      const quotesRaw = props[NOTION_FIELDS.quotes]?.rich_text?.[0]?.plain_text ?? "";
+      const quotes = quotesRaw ? quotesRaw.split("\n").filter(Boolean) : [];
 
       return {
         pageId: page.id,
@@ -232,6 +232,7 @@ export async function listBooksByGenre(
         author,
         coverUrl,
         notionUrl: `https://notion.so/${page.id.replace(/-/g, "")}`,
+        quotes,
       };
     });
 }
@@ -263,6 +264,7 @@ export async function getBookByPageId(pageId: string): Promise<BookDetail> {
 
   const props = page.properties;
   const coverFile = props[NOTION_FIELDS.cover]?.files?.[0];
+  const quotesRaw = props[NOTION_FIELDS.quotes]?.rich_text?.[0]?.plain_text ?? "";
 
   return {
     pageId: page.id,
@@ -275,7 +277,7 @@ export async function getBookByPageId(pageId: string): Promise<BookDetail> {
     genres: (props[NOTION_FIELDS.genres]?.multi_select?.map((g) => g.name) ?? []) as BookDetail["genres"],
     description: props[NOTION_FIELDS.description]?.rich_text?.[0]?.plain_text ?? "",
     coverUrl: coverFile?.file?.url ?? coverFile?.external?.url ?? null,
-    status: ((props[NOTION_FIELDS.status]?.select?.name) ?? "草稿") as Status,
+    quotes: quotesRaw ? quotesRaw.split("\n").filter(Boolean) : [],
   };
 }
 

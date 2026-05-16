@@ -23,7 +23,7 @@ const SYSTEM = `你是 Lovely Shelf 的 AI 书架助手，帮用户管理他们�
 
 你可以：
 1. 识别用户上传的书封面，将书籍入库
-2. 查询用户书架上某类型的书
+2. 查询用户书架上某类型的书，并展示这些书的优美语句（quotes 字段）
 3. 回答关于书架的问题
 
 有图片时，按以下顺序入库：
@@ -32,6 +32,7 @@ const SYSTEM = `你是 Lovely Shelf 的 AI 书架助手，帮用户管理他们�
 3. 如果已存在：告知用户，不继续
 4. 如果未重复：upload_cover_to_notion → create_notion_page
 5. 报告入库结果（书名、类型、Notion 链接）
+6. 入库成功后，告诉用户这本书有几句优美语句，问他"要去语录页看看吗？"并给出链接 [去看语录](/quotes)
 
 回复用中文，语气轻松自然。
 
@@ -86,6 +87,7 @@ const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
             country:     { type: "string" },
             genres:      { type: "array", items: { type: "string" } },
             description: { type: "string" },
+            quotes:      { type: "array", items: { type: "string" }, description: "2-3句优美语句" },
           },
           required: ["title", "author", "genres", "description"],
         },

@@ -164,8 +164,20 @@ function MessageBubble({ msg }: { msg: DisplayMessage }) {
   );
 }
 
+// 引导语列表：点击直接发送
+const HINTS = [
+  "给我看看我的励志书",
+  "给我看看我的回忆录",
+  "书架里有哪些心理相关的书？",
+  "给我看看我的儿童读物",
+  "给我看看我的历史书",
+  "展示书架里的优美语句",
+  "我有哪些旅行类书籍？",
+  "帮我入库一本书",
+];
+
 // 空状态：没有消息时的引导
-function EmptyState() {
+function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
       <div className="w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center">
@@ -174,14 +186,19 @@ function EmptyState() {
       <div>
         <p className="font-semibold text-ink mb-1">和书架 AI 聊聊</p>
         <p className="text-sm text-ink-muted">
-          上传书封面自动入库，或者问我"给我看看我的回忆录"
+          上传书封面自动入库，或者直接问我关于书架的问题
         </p>
       </div>
-      <div className="flex flex-wrap justify-center gap-2 mt-1">
-        {["给我看看我的励志书", "帮我入库一本书"].map((hint) => (
-          <span key={hint} className="text-xs px-3 py-1.5 bg-shelf-100 text-shelf-700 rounded-full">
+      <div className="flex flex-wrap justify-center gap-2 mt-1 max-w-sm">
+        {HINTS.map((hint) => (
+          <button
+            key={hint}
+            type="button"
+            onClick={() => onSelect(hint)}
+            className="text-xs px-3 py-1.5 bg-shelf-100 text-shelf-700 rounded-full hover:bg-shelf-200 transition-colors"
+          >
             {hint}
-          </span>
+          </button>
         ))}
       </div>
     </div>
@@ -310,8 +327,9 @@ export default function ChatPage() {
   };
 
   // 发送消息的核心逻辑
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
+  // directText：引导语点击时直接传文字，不走 input state
+  const handleSend = useCallback(async (directText?: string) => {
+    const text = (directText ?? input).trim();
     if ((!text && !imageFile) || isStreaming) return;
 
     // 立刻清空输入区
@@ -454,7 +472,7 @@ export default function ChatPage() {
           内容长时自然溢出变成可滚动，最新消息始终靠近输入框 */}
       <div className="flex-1 overflow-y-auto">
         {displayMessages.length === 0 ? (
-          <EmptyState />
+          <EmptyState onSelect={(hint) => handleSend(hint)} />
         ) : (
           <div className="px-4 py-4">
             <div className="max-w-2xl mx-auto w-full space-y-4">
@@ -543,7 +561,7 @@ export default function ChatPage() {
             {/* 发送按钮 */}
             <button
               type="button"
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={isStreaming || converting || (!input.trim() && !imageFile)}
               className="w-9 h-9 flex items-center justify-center bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl transition-colors shrink-0"
             >
