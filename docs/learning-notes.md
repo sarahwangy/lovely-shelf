@@ -483,3 +483,76 @@
 
 - **一句话总结：**
   聊天 + 流式的核心是"把 Agent 循环的每一步实时广播给前端"——SSE 是广播通道，buffer 处理保证完整性，messages 数组是 AI 的记忆，system prompt 控制输出格式，四件事配合好才能跑通。
+
+---
+
+### T26 - QuoteStudio 统一编辑器（组件设计模式）
+
+- **学到的核心概念：**
+  - **"合并"比"并排"更省认知成本**：原来有两个独立组件 `AddQuoteDrawer`（保存文字）和 `CardMaker`（做卡片），用户每次都要在两个入口间跳来跳去。把它们合成一个 `QuoteStudio` 之后，用同一套界面既能保存又能导出——这是"减少上下文切换"的经典产品决策
+  - **Props 控制模式（canSave 模式）**：`QuoteStudio` 接受可选的 `onSaved` 回调。有传 → 显示"保存到 Notion"按钮；不传 → 只能导出 PNG。一个组件、两种行为，靠 props 区分而不是靠两个组件。行业里叫"controlled behavior via props"
+  - **StudioTarget 类型**：父组件（`page.tsx`）用一个对象描述"打开制作室时的初始状态"，比独立的 `useState` 一个个传更清晰：`{ initialText, initialBookTitle, initialAuthor, canSave }`。状态是 `null`（关闭）或对象（打开），一个字段搞定开关+数据
+  - **乐观更新（Optimistic Update）**：保存成功后，不等服务端返回新数据刷页面，而是直接把新条目插到列表最前面 `setBooks(prev => [book, ...prev])`。用户感觉"立刻生效"，实际上服务端可能还在写。行业标准做法，微博/朋友圈点赞都这样
+  - **无书名 → 仅本地展示**：`handleSave` 里检查 `bookTitle.trim()`，空则构造一个本地 `QuoteBook` 对象（`pageId: local-${Date.now()}`）直接调 `onSaved`，完全不发网络请求。这叫"边界条件早返回"，逻辑放在调用方而非 API 里
+
+- **用到的关键 API/函数：**
+  - `dynamic(() => import("./QuoteStudio"), { ssr: false })` — Next.js 动态导入并关闭 SSR，因为组件依赖 `document`、`window` 等浏览器 API，在服务端渲染时不存在
+  - `FormData` + `fd.append()` — 同时上传文字字段和图片文件的标准方式（比 JSON 多了 binary 支持）
+  - `useRef<HTMLTextAreaElement>` — 拿到 textarea 的 DOM 节点，用于后续读取 `selectionStart/selectionEnd`
+
+- **容易踩的坑：**
+  - **`ssr: false` 必须加**：组件里用了 `html-to-image`（操作 DOM）、`SpeechRecognition`（浏览器 API），服务端根本没有这些，不关 SSR 会报 `ReferenceError: document is not defined`
+  - **乐观更新 vs 实际 coverUrl**：本地上传图片时，文件已存到 Notion，但 Notion 返回的临时 URL 需要刷新才能用。所以乐观更新时 `coverUrl` 只能传 `null`，等用户下次刷页面才能看到封面图
+
+- **一句话总结：**
+  好的组件设计不是"功能越多越好"，而是"一个入口做完所有相关的事"——QuoteStudio 把创作、预览、保存、导出合在一处，靠 `onSaved` 这一个 prop 区分两种模式。
+
+---
+
+### T27 - 第三方图片/视频搜索 API（Pixabay 集成）
+
+- **学到的核心概念：**
+  - **API Key 放后端是铁律**：Pixabay Key 写在 `.env.local`，只有服务端的 `/api/images` 和 `/api/videos` 路由能读到，浏览器永远看不见。如果直接在前端 `fetch("pixabay.com/api/?key=YOUR_KEY")` 就会在 Network 面板里暴露给任何人——这是最常见的 API Key 泄漏方式
+  - **中间层路由的价值**：前端不直接调 Pixabay，而是调自己的 `/api/images?q=xxx`，由这个路由再去请求 Pixabay。好处：① Key 不暴露；② 可以格式化返回值（把 Pixabay 的复杂结构拍平成 `{ id, thumbUrl, fullUrl, author }`）；③ 加缓存、限流等逻辑都在一处。行业里叫 BFF（Backend For Frontend）模式
+  - **中文关键词检测**：`/[一-鿿]/.test(q)` 用正则判断字符串里是否有中文字符（Unicode 区间 `一-鿿`），有就在 Pixabay 请求里加 `&lang=zh` 参数——这是适配多语言 API 的实用技巧
+  - **`flatMap` vs `map + filter`**：`(data.videos ?? []).flatMap(v => { if (!file) return []; return [{ ...}]; })` 是"边转换边过滤"的简洁写法。返回 `[]` 表示跳过，返回 `[item]` 表示保留。比先 `map` 再 `filter` 少一次遍历，行业里处理"可能缺字段"的数据时很常用
+
+- **用到的关键 API/函数：**
+  - `Pixabay Images API`：`GET https://pixabay.com/api/?key=...&q=...&image_type=photo&orientation=vertical`，返回 `hits[]`，每条含 `webformatURL`（缩略图）和 `largeImageURL`（高清图）
+  - `Pixabay Videos API`：`GET https://pixabay.com/api/videos/?key=...&q=...`，每条 `hits` 下有 `videos.large/medium/small`，选最大的用
+  - `encodeURIComponent(q)` — 把中文等特殊字符编码成 URL 安全格式，搜索关键词必须过这一关
+  - `res.ok` — fetch 返回的 Response 对象自带的布尔值，`status 200-299` 为 `true`，比手动判断 `status === 200` 更健壮
+
+- **容易踩的坑：**
+  - **`per_page=6` 而不是 12**：视频文件大，太多结果会让用户等很久且占带宽。图片可以给 12 张，视频控制在 6 张就够选
+  - **Pixabay 视频 URL 有时效性**：Pixabay 的视频直链会过期，不能存到数据库里作为永久链接用。这里只用来在制作室里预览和播放，不存 Notion
+
+- **一句话总结：**
+  后端中间层路由的核心价值是"把第三方 API 的复杂性和敏感信息挡在后端"——前端只看到整洁的 `/api/images`，Key、格式转换、错误处理全部藏在服务端。
+
+---
+
+### T28 - 前端导出技术（PNG / MP4 / Emoji 插入）
+
+- **学到的核心概念：**
+  - **html-to-image vs html2canvas**：两者都能把 DOM 元素"截图"成图片，但原理不同。`html2canvas` 用自己实现的渲染引擎重绘 DOM，遇到现代 CSS（如 Tailwind v4 的 `oklab()` 颜色函数）就解析失败报错。`html-to-image` 把 DOM 序列化成 SVG 的 `<foreignObject>`，再用浏览器原生 `Image` 渲染，支持所有浏览器能显示的 CSS
+  - **MediaRecorder API（录制视频）**：浏览器原生 API，把 `<canvas>` 的实时画面录制成视频文件。流程：`canvas.captureStream(30fps)` → `new MediaRecorder(stream)` → `recorder.start()` → 每帧 `ctx.drawImage(videoEl, ...)` → `setTimeout(() => recorder.stop(), duration)` → `ondataavailable` 收集 chunks → `new Blob(chunks)` → 下载
+  - **canvas 合成替代 DOM 截图**：录制视频时不能截 DOM（DOM 没有 `captureStream`），必须用 canvas 手动重绘所有图层：① 视频帧（`ctx.drawImage(videoEl)`）、② 半透明遮罩（`ctx.fillRect`）、③ 波浪动画（`ctx.beginPath` + 正弦曲线）、④ 文字（`ctx.fillText`）。顺序即层级
+  - **Emoji 插入到光标位置**：`textarea.selectionStart/selectionEnd` 是 DOM 原生属性，告诉你"光标在第几个字符"。`text.slice(0, start) + emoji + text.slice(end)` 把 emoji 插入进去，`setTimeout(() => ta.setSelectionRange(start + emoji.length, ...)` 把光标移到 emoji 后面（setTimeout 是为了等 React 重渲完再操作 DOM）
+  - **`video/mp4` 的浏览器支持不统一**：Chrome 支持 `video/mp4;codecs=avc1`，Firefox 和 Safari 可能不支持，回退到 `video/webm`。`MediaRecorder.isTypeSupported()` 用来运行时检测，按支持情况选格式
+
+- **用到的关键 API/函数：**
+  - `import("html-to-image").then(({ toPng })` — 动态导入，只在点击导出时才加载这个库（懒加载），减少首屏 JS 体积
+  - `toPng(element, { pixelRatio: 2 })` — 导出 2 倍分辨率（Retina 屏清晰），返回 base64 dataURL
+  - `canvas.captureStream(fps)` — 把 canvas 变成 `MediaStream`（视频流），是录制的起点
+  - `new MediaRecorder(stream, { mimeType })` — 把媒体流录制成文件，`ondataavailable` 回调收数据
+  - `URL.createObjectURL(blob)` / `URL.revokeObjectURL(url)` — 把内存里的 Blob 变成临时 URL 用于下载，用完要释放，不然内存泄漏
+  - `ctx.measureText(str).width` — 测量文字渲染后的像素宽度，用来实现 canvas 上的自动换行
+
+- **容易踩的坑：**
+  - **`display: none` 的 video 不播放**：把视频放在隐藏元素里（`className="hidden"`），浏览器会暂停播放，`ctx.drawImage` 只能捕捉到黑帧。解决：让 `<video>` 直接显示在卡片里（`absolute inset-0`），用 CSS 层叠来控制视觉效果
+  - **canvas 文字不自动换行**：`ctx.fillText` 不像 HTML 那样自动折行，必须自己写 `wrapCanvasText` 函数：逐字累加，`ctx.measureText` 量宽，超出 maxWidth 就换行
+  - **emoji 长度 ≠ 字符数**：`"🦋".length === 2`（因为 emoji 是 UTF-16 代理对），但 `[..."🦋"].length === 1`。用展开运算符 `[...text]` 遍历字符串，每个 emoji 算一个，光标偏移量才对
+
+- **一句话总结：**
+  "导出"是前端最考验底层知识的功能——PNG 导出靠 SVG foreignObject 绕过 CSS 兼容问题，MP4 录制靠 canvas 帧级合成 + MediaRecorder，两条路都绕开了"直接截 DOM"的局限。
