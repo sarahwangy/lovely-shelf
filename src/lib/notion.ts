@@ -361,6 +361,60 @@ export async function listAllBooksByGenre(genre: string): Promise<BookSummary[]>
   return books;
 }
 
+// 手动添加一条语录，支持图片封面（本地上传或外链）、音乐/视频 URL
+export async function createManualQuote(
+  text: string,
+  opts: {
+    bookTitle?:        string;
+    author?:           string;
+    coverBuffer?:      Buffer;  // 本地上传的图片 Buffer
+    coverExternalUrl?: string;  // Pexels/Pixabay 图片 URL（外链）
+    musicUrl?:         string;
+    videoUrl?:         string;
+  } = {},
+): Promise<{ pageId: string; pageUrl: string }> {
+  const { bookTitle, author, coverBuffer, coverExternalUrl, musicUrl, videoUrl } = opts;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const properties: Record<string, any> = {
+    [NOTION_FIELDS.title]:       { title:     [{ text: { content: bookTitle?.trim() || "📝 手动语录" } }] },
+    [NOTION_FIELDS.author]:      { rich_text: [{ text: { content: author?.trim() || "" } }] },
+    [NOTION_FIELDS.genres]:      { multi_select: [] },
+    [NOTION_FIELDS.description]: { rich_text: [{ text: { content: "" } }] },
+    [NOTION_FIELDS.quotes]:      { rich_text: [{ text: { content: text.trim() } }] },
+  };
+
+  // Notion URL 属性类型：直接存链接，null = 清空
+  if (musicUrl) properties[NOTION_FIELDS.music] = { url: musicUrl };
+  if (videoUrl) properties[NOTION_FIELDS.video] = { url: videoUrl };
+
+  const page = await notion.pages.create({
+    parent: { database_id: DATABASE_ID },
+    properties,
+  });
+
+  const pageId  = page.id;
+  const pageUrl = `https://notion.so/${pageId.replace(/-/g, "")}`;
+
+  // 封面：本地上传走 file_upload，外链走 external
+  if (coverBuffer) {
+    const fileUploadId = await uploadFileToNotion(coverBuffer, "cover.jpg");
+    await notion.pages.update({
+      page_id: pageId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: { [NOTION_FIELDS.cover]: { files: [{ name: "cover.jpg", type: "file_upload", file_upload: { id: fileUploadId } }] } } as any,
+    });
+  } else if (coverExternalUrl) {
+    await notion.pages.update({
+      page_id: pageId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      properties: { [NOTION_FIELDS.cover]: { files: [{ name: "image.jpg", type: "external", external: { url: coverExternalUrl } }] } } as any,
+    });
+  }
+
+  return { pageId, pageUrl };
+}
+
 // 按书名 + 作者查重，返回已有页面的 URL，找不到返回 null
 // SDK v5 的 dataSources.query 需要 data_source_id（不同于 database_id），
 // 直接调 REST API /v1/databases/{id}/query 更稳，和文件上传用同一模式

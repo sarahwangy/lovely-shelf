@@ -11,8 +11,10 @@ export const NOTION_FIELDS = {
   country: "国家",
   genres: "类型 Label",
   description: "描述",
-  cover: "封面",
+  cover:  "封面",
   quotes: "优美语句",
+  music:  "音乐",
+  video:  "视频",
 } as const;
 
 // 类型 Label 的预设选项，必须和 Notion 里一字不差
