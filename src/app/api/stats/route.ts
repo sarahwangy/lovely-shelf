@@ -12,6 +12,7 @@ export type StatsData = {
   genres: { name: string; count: number; percentage: number }[];
   topGenres: { name: string; count: number; percentage: number }[];
   countries: { name: string; count: number }[];
+  authors: { name: string; count: number }[];       // 出现最多的作者（热词云用）
   thisYear: { total: number; byMonth: number[] };   // byMonth[0] = 1月，byMonth[11] = 12月
   recentActivity: { date: string; count: number }[]; // 最近 30 天每日入库数
   latest: BookSummary[];                             // 最近 5 本入库
@@ -75,9 +76,11 @@ function computeStats(pages: Awaited<ReturnType<typeof fetchAllPages>>): StatsDa
   const today = new Date();
 
   // 按类型统计
-  const genreMap = new Map<string, number>();
+  const genreMap   = new Map<string, number>();
   // 按国家统计
   const countryMap = new Map<string, number>();
+  // 按作者统计（热词云用）
+  const authorMap  = new Map<string, number>();
   // 今年每月入库数（index 0 = 1月）
   const byMonth = Array(12).fill(0);
   // 最近 30 天每日入库（key = "YYYY-MM-DD"）
@@ -95,6 +98,10 @@ function computeStats(pages: Awaited<ReturnType<typeof fetchAllPages>>): StatsDa
     // 国家（select）
     const country = props[NOTION_FIELDS.country]?.select?.name;
     if (country) countryMap.set(country, (countryMap.get(country) ?? 0) + 1);
+
+    // 作者（rich_text，取第一段）
+    const author = props[NOTION_FIELDS.author]?.rich_text?.[0]?.plain_text?.trim();
+    if (author) authorMap.set(author, (authorMap.get(author) ?? 0) + 1);
 
     // 入库时间
     const created = new Date(page.created_time);
@@ -124,6 +131,12 @@ function computeStats(pages: Awaited<ReturnType<typeof fetchAllPages>>): StatsDa
     .sort((a, b) => b[1] - a[1])
     .map(([name, count]) => ({ name, count }));
 
+  // 作者排序：取出现最多的前 20 位
+  const authors = [...authorMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([name, count]) => ({ name, count }));
+
   // 最近 30 天：补全所有日期（没有入库的天补 0）
   const recentActivity = Array.from({ length: 30 }, (_, i) => {
     const d = new Date(today);
@@ -150,6 +163,7 @@ function computeStats(pages: Awaited<ReturnType<typeof fetchAllPages>>): StatsDa
     genres,
     topGenres: genres.slice(0, 3),
     countries,
+    authors,
     thisYear: { total: byMonth.reduce((s, n) => s + n, 0), byMonth },
     recentActivity,
     latest,

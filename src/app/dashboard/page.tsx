@@ -127,6 +127,15 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* ── 热词云图（全宽，类型 + 国家 + 作者综合）── */}
+        <WidgetCard title="☁️ 热词云图">
+          <WordCloud
+            genres={stats.genres}
+            countries={stats.countries}
+            authors={stats.authors}
+          />
+        </WidgetCard>
+
         {/* ── 第二行：月度趋势（左）+ 热力图（右）── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <WidgetCard title={`📈 ${thisYearLabel}入库趋势`}>
@@ -243,6 +252,83 @@ function LatestBookCard({ book, onBookClick }: { book: BookSummary; onBookClick:
       <p className="text-xs text-ink font-medium line-clamp-2 leading-snug">{book.title}</p>
       <p className="text-xs text-ink-muted mt-0.5 truncate">{book.author}</p>
     </button>
+  );
+}
+
+// 词云：把类型、国家、作者名合并为一个词表，字体大小按出现次数缩放
+// 三类词用不同颜色区分，鼠标悬停显示具体数量
+const WORD_CLOUD_COLORS: Record<"genre" | "country" | "author", string[]> = {
+  genre:   ["#6366f1", "#8b5cf6", "#a78bfa", "#7c3aed", "#4f46e5", "#9333ea"],
+  country: ["#059669", "#10b981", "#34d399", "#047857", "#065f46", "#0d9488"],
+  author:  ["#d97706", "#f59e0b", "#fb923c", "#ea580c", "#b45309", "#c2410c"],
+};
+
+function WordCloud({
+  genres,
+  countries,
+  authors,
+}: {
+  genres:    { name: string; count: number }[];
+  countries: { name: string; count: number }[];
+  authors:   { name: string; count: number }[];
+}) {
+  type WordEntry = { name: string; count: number; cat: "genre" | "country" | "author" };
+
+  const words: WordEntry[] = [
+    ...genres.map(w  => ({ ...w, cat: "genre"   as const })),
+    ...countries.map(w => ({ ...w, cat: "country" as const })),
+    ...authors.map(w  => ({ ...w, cat: "author"  as const })),
+  ];
+
+  if (words.length === 0) {
+    return <p className="text-ink-muted text-sm text-center py-6">暂无数据</p>;
+  }
+
+  const maxCount = Math.max(...words.map(w => w.count));
+  const minCount = Math.min(...words.map(w => w.count));
+  const range    = maxCount - minCount || 1;
+
+  // 图例
+  const legend: { cat: WordEntry["cat"]; label: string }[] = [
+    { cat: "genre",   label: "类型" },
+    { cat: "country", label: "国家" },
+    { cat: "author",  label: "作者" },
+  ];
+
+  return (
+    <div>
+      {/* 图例 */}
+      <div className="flex items-center gap-4 mb-4 text-xs text-ink-muted">
+        {legend.map(({ cat, label }) => (
+          <span key={cat} className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: WORD_CLOUD_COLORS[cat][0] }} />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {/* 词云正文：flex-wrap 居中排列，字体大小 12–30px */}
+      <div className="flex flex-wrap gap-x-5 gap-y-3 justify-center items-center py-2 min-h-[120px]">
+        {words.map((word, i) => {
+          const normalized = (word.count - minCount) / range;
+          const fontSize   = 12 + normalized * 18;           // 12px 最小，30px 最大
+          const opacity    = 0.55 + normalized * 0.45;       // 少的词稍淡
+          const palette    = WORD_CLOUD_COLORS[word.cat];
+          const color      = palette[i % palette.length];
+          return (
+            <span
+              key={`${word.cat}-${word.name}`}
+              style={{ fontSize: `${fontSize}px`, color, opacity }}
+              className="font-semibold cursor-default hover:opacity-100 transition-opacity leading-snug"
+              title={`${word.name}：${word.count} 本`}
+            >
+              {word.name}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
