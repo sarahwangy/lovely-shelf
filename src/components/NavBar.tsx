@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 const NAV_ITEMS = [
   { href: "/",          icon: "📤", label: "上传" },
   { href: "/dashboard", icon: "📊", label: "书架" },
+  { href: "/chat",      icon: "💬", label: "聊天" },
 ];
 
 export default function NavBar() {

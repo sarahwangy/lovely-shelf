@@ -451,3 +451,35 @@
 
 - **一句话总结：**
   Tool Use Agent 的本质是"把 Claude 从一个函数变成一个决策者"——它不再只是输入→输出，而是在一个循环里自己决定调哪些工具、看结果、再决定下一步，messages 数组是它唯一的记忆载体。
+
+---
+
+### T24 - 聊天界面 + 流式响应（Streaming Chat）
+
+- **学到的核心概念：**
+  - **SSE（Server-Sent Events）**：服务端主动向浏览器推送数据的协议，格式是 `data: {...}\n\n`。Next.js 里用 `ReadableStream` 返回，浏览器用 `response.body.getReader()` 读取。行业里 ChatGPT 的打字机效果就是用 SSE 实现的
+  - **流式 Agent 循环**：`client.messages.stream()` 返回一个 `MessageStream`，`.on("text", cb)` 在每个 token 到来时触发，`await stream.finalMessage()` 等整条消息完整。工具调用发生在两轮流式之间：流完→执行工具→再开新流
+  - **无状态 API + 前端维护历史**：后端不存 session，前端把完整 `apiMessages` 数组随每次请求发过来。这是现代聊天应用的标准设计，服务端可以水平扩展、随时重启
+  - **SSE buffer 处理**：`reader.read()` 返回的 chunk 可能跨行，不能直接 `split("\n")`。要用 `buffer += chunk; lines = buffer.split("\n"); buffer = lines.pop()` 模式，把不完整的行留在 buffer 里
+  - **受控 textarea 自动撑高**：`useEffect` 监听 `input` 变化，用 `el.style.height = "auto"` 先重置再读 `scrollHeight`，这是让 textarea 随内容增长的行业惯用写法
+  - **`title` vs 自定义 tooltip**：浏览器原生 `title` 属性有固定延迟，无法控制。要做"立即显示"的 tooltip 必须用 CSS `group-hover:opacity-100`（Tailwind group 模式）
+  - **系统提示控制输出格式**：与其在前端费力解析 Markdown 表格，不如在 system prompt 里直接告诉 Claude"禁止用表格"。从源头控制输出比在终端解析更可靠
+
+- **用到的关键 API/函数：**
+  - `client.messages.stream({ model, tools, messages })` — 流式版 API，返回 `MessageStream`
+  - `stream.on("text", delta => ...)` — 每个 token 到来时的回调，用来实现打字机效果
+  - `await stream.finalMessage()` — 等待完整消息，拿到 `stop_reason` 和完整 `content`
+  - `new ReadableStream({ start(controller) { ... } })` — Next.js App Router 的流式响应写法
+  - `controller.enqueue(encoder.encode("data: {...}\n\n"))` — SSE 格式推送单条事件
+  - `response.body!.getReader()` — 前端读取 SSE 流的标准方式
+  - `FileReader.readAsDataURL(file)` — 把文件转成 base64 data URL 用于预览，比 `createObjectURL` 对更多格式兼容
+
+- **容易踩的坑：**
+  - **SSE chunk 边界不对齐**：一次 `reader.read()` 可能包含半条消息，必须用 buffer 拼接，不能假设每次 chunk 都是完整的 `data: {...}\n\n`
+  - **`sharp` 不支持 HEIC**：后端用 sharp 处理图片，HEIC 格式会直接报错返回 500。必须在前端转换成 JPEG 再发送（三道保险：libheif-js → heic2any → Canvas）
+  - **流式中不能渲染 Markdown**：打字机输出时 `**` 可能只来了一半（如 `**书名`），直接解析会出现乱码。正确做法：流式时显示原始文字，`streaming: false` 后再用 MarkdownText 渲染
+  - **`apiMessages` 包含 tool_use/tool_result 块**：对话历史里不只有 text，还有工具调用的结构化数据。前端必须原封不动地把 `newMessages` 存起来发回，不能只存文字
+  - **Claude 会自作主张用 Markdown 表格**：system prompt 里不禁止，它就会用。从源头约束比前端解析更靠谱
+
+- **一句话总结：**
+  聊天 + 流式的核心是"把 Agent 循环的每一步实时广播给前端"——SSE 是广播通道，buffer 处理保证完整性，messages 数组是 AI 的记忆，system prompt 控制输出格式，四件事配合好才能跑通。
