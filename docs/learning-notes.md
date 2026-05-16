@@ -423,3 +423,31 @@
 
 - **一句话总结：**
   Dashboard 的核心是"一次全量拉数据，然后在内存里做各种统计计算"，缓存避免每次刷页面都重复这个过程，recharts 负责把数字变成图。
+
+---
+
+### T23 - 后端 Agent 重构（Anthropic Tool Use）
+
+- **学到的核心概念：**
+  - **Tool Use（工具调用）**：给 Claude 定义一组"工具"（函数描述 + 参数 Schema），Claude 在回复里不直接给答案，而是说"我要调用 XX 工具，参数是 YY"——你执行完把结果还给它，它再决定下一步。这是 Anthropic SDK 的核心进阶功能
+  - **Agent 循环**：`while (stop_reason === 'tool_use')` 这个循环就是 Agent 的心跳——只要 Claude 还想调工具就继续，直到它说 `end_turn` 才停。行业里所有 Tool Use Agent 都长这个样子
+  - **messages 数组是 Agent 的记忆**：每轮都把完整对话历史（用户消息 + Claude 回复 + 工具结果）发给 Claude，它才知道"前面做了什么、现在该做什么"。这也是为什么 Agent 比单次调用贵——每轮 token 都在累积
+  - **Agent vs Workflow 的区别**：Workflow 是代码控制顺序（旧 `/api/process`）；Agent 是 Claude 自己决定调哪些工具、什么顺序。T23 是介于两者之间的"有引导的 Agent"（system prompt 里指定了顺序），T24 的聊天界面才是真正自主的 Agent
+  - **AGENTS.md 是给 AI 工具看的**：不是给人看的文档，是告诉 Claude Code / Cursor 等 AI 编程工具"这个项目有哪些特殊规则"，比如"这个 Next.js 版本有 breaking changes，先读本地文档"
+  - **feature flag（功能开关）**：`NEXT_PUBLIC_USE_AGENT=true` 让新旧流程可以随时切换，不用改代码。`NEXT_PUBLIC_` 前缀是 Next.js 约定——带这个前缀的环境变量才会暴露给浏览器端
+
+- **用到的关键 API/函数：**
+  - `client.messages.create({ tools, messages })` — 带工具定义的 Anthropic API 调用，响应里可能包含 `tool_use` 类型的 content block
+  - `response.stop_reason === "tool_use"` — 判断 Claude 是否还要继续调工具
+  - `response.content.filter(b => b.type === "tool_use")` — 从响应里找出所有工具调用指令
+  - `{ type: "tool_result", tool_use_id, content }` — 把工具执行结果塞回 messages，格式是 Anthropic 协议规定的
+  - `input_schema`（JSON Schema）— 定义每个工具的参数结构，Claude 按这个格式填参数
+
+- **容易踩的坑：**
+  - **assistant 回复必须加入 messages 再 push tool_result**：顺序是 messages.push(Claude回复) → 执行工具 → messages.push(工具结果)。如果漏掉 Claude 回复这一步，下一轮 API 会报"messages 不符合交替规则"
+  - **tool_result 的 content 必须是字符串**：工具返回的对象要 `JSON.stringify()` 再塞进去，直接传对象会报类型错误
+  - **Agent 比单次调用贵 4-8 倍**：每个工具调用 = 一次 API 往返，对话历史还会随轮次累积。适合复杂场景，简单场景用旧 `/api/process` 更划算
+  - **`NEXT_PUBLIC_` 缺一不可**：浏览器端读环境变量必须加这个前缀，不加的话 `process.env.NEXT_PUBLIC_USE_AGENT` 在浏览器里永远是 `undefined`
+
+- **一句话总结：**
+  Tool Use Agent 的本质是"把 Claude 从一个函数变成一个决策者"——它不再只是输入→输出，而是在一个循环里自己决定调哪些工具、看结果、再决定下一步，messages 数组是它唯一的记忆载体。

@@ -208,7 +208,10 @@ export default function Home() {
       try {
         const formData = new FormData();
         formData.append("image", item.file);
-        const res = await fetch("/api/process", { method: "POST", body: formData });
+        // NEXT_PUBLIC_USE_AGENT=true → 走新 Agent 流程；默认走旧固定流程
+        // NEXT_PUBLIC_ 前缀让环境变量在浏览器里也能读到（Next.js 约定）
+        const endpoint = process.env.NEXT_PUBLIC_USE_AGENT === "true" ? "/api/agent" : "/api/process";
+        const res = await fetch(endpoint, { method: "POST", body: formData });
         const data = await res.json();
 
         if (data.success && data.isDuplicate) {
