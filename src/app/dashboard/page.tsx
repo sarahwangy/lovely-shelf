@@ -227,10 +227,13 @@ function HeatmapRow({ data }: { data: { date: string; count: number }[] }) {
           : intensity < 0.4 ? "bg-shelf-200"
           : intensity < 0.7 ? "bg-shelf-400"
           : "bg-shelf-600";
-        // title 属性：鼠标悬停时显示日期和入库数
         return (
-          <div key={date} title={`${date}：${count} 本`}
-            className={`w-8 h-8 rounded-lg ${bg} transition-colors`} />
+          <div key={date} className="relative group">
+            <div className={`w-8 h-8 rounded-lg ${bg} transition-colors cursor-default`} />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-ink text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              {date}{count > 0 ? `：${count} 本` : ""}
+            </span>
+          </div>
         );
       })}
     </div>
