@@ -3,6 +3,10 @@
 import { signIn } from "@/auth";
 
 export default function LoginPage() {
+  // 服务端直接读取环境变量，决定是否显示 Demo 按钮
+  // 这段代码只在服务端运行，env var 不会暴露给浏览器
+  const demoEnabled = process.env.DEMO_ENABLED === "true";
+
   return (
     <div className="min-h-dvh flex items-center justify-center bg-shelf-50 px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-8 w-full max-w-sm text-center">
@@ -13,12 +17,10 @@ export default function LoginPage() {
         <h1 className="text-xl font-bold text-ink mb-1">lovely-shelf</h1>
         <p className="text-sm text-ink-muted mb-8">把书封面变成书库</p>
 
-        {/* Google 登录按钮，action 是 Server Action */}
+        {/* Google 登录按钮 */}
         <form
           action={async () => {
-            // "use server" 标记这段代码在服务端运行（不会发到浏览器）
             "use server";
-            // signIn 触发 Google OAuth 跳转，成功后回到首页
             await signIn("google", { redirectTo: "/" });
           }}
         >
@@ -37,7 +39,39 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-xs text-ink-light mt-6">仅限授权账号访问</p>
+        {/* Demo 体验按钮：仅 DEMO_ENABLED=true 时显示 */}
+        {demoEnabled && (
+          <>
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-stone-100" />
+              <span className="text-xs text-ink-muted">或</span>
+              <div className="flex-1 h-px bg-stone-100" />
+            </div>
+
+            <form
+              action={async () => {
+                "use server";
+                // Credentials provider：authorize() 不验证密码，直接返回 demo user
+                await signIn("credentials", { redirectTo: "/" });
+              }}
+            >
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white font-medium py-3 px-4 rounded-xl transition-colors"
+              >
+                🎪 一键体验 Demo
+              </button>
+            </form>
+
+            <p className="text-xs text-ink-muted mt-3">
+              Demo 模式 · 数据为真实书架内容
+            </p>
+          </>
+        )}
+
+        {!demoEnabled && (
+          <p className="text-xs text-ink-light mt-6">仅限授权账号访问</p>
+        )}
       </div>
     </div>
   );
