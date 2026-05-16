@@ -50,8 +50,11 @@ const HINTS = [
 // 初始种子语录（页面加载时立即显示，不消耗 API）
 // 点"换一句"后由 Claude 动态生成，无限不重复
 const SEED_QUOTES = [
-  { zh: "阅读是最安静的旅行。",   en: "Reading is the quietest kind of travel." },
-  { zh: "每本书都是一次友谊。",   en: "Every book is a new friendship." },
+  { zh: "你值得被温柔对待，包括被你自己。",         en: "You deserve to be treated gently — especially by yourself." },
+  { zh: "休息不是懒惰，是对自己的温柔。",           en: "Rest is not laziness. It's kindness toward yourself." },
+  { zh: "不完美的你，已经足够值得被爱了。",         en: "Imperfect as you are, you are already worthy of love." },
+  { zh: "阅读是最安静的旅行。",                     en: "Reading is the quietest kind of travel." },
+  { zh: "你的感受是真实的，允许它存在。",           en: "Your feelings are real. Let them be." },
 ];
 
 function getGreeting() {
