@@ -310,7 +310,7 @@ function QuoteCard({
   onMakeCard: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 flex gap-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 flex gap-4 relative">
       {book.coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={book.coverUrl} alt={book.bookTitle}
@@ -321,70 +321,70 @@ function QuoteCard({
         </div>
       )}
 
-      <div className="flex-1 min-w-0">
+      {/* 内容区：pb-9 留出右下角按钮的空间 */}
+      <div className="flex-1 min-w-0 pb-9">
         <p className="text-ink text-base leading-relaxed border-l-2 border-shelf-300 pl-3 mb-3">
           {text}
         </p>
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            {liked && (
-              <span className="inline-flex items-center gap-1 text-xs text-red-500 mb-1">
-                <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current shrink-0">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-                已收藏
-              </span>
-            )}
-            <a href={book.notionUrl} target="_blank" rel="noopener noreferrer"
-              className="text-sm font-medium text-shelf-600 hover:underline truncate block">
-              {book.bookTitle}
-            </a>
-            {book.author && <p className="text-xs text-ink-muted mt-0.5">{book.author}</p>}
-            <div className="flex gap-2 mt-1 flex-wrap">
-              {book.musicUrl && (
-                <a href={book.musicUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
-                  🎵 音乐
-                </a>
-              )}
-              {book.videoUrl && (
-                <a href={book.videoUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
-                  🎬 视频
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* 🎨 制作卡片：自定义 tooltip，hover 立即显示 */}
-          <div className="relative group shrink-0">
-            <button type="button" onClick={onMakeCard}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-shelf-500 hover:bg-shelf-50 transition-colors text-base">
-              🎨
-            </button>
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-ink text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              制作语录卡
-            </span>
-          </div>
-
-          {/* 收藏按钮 */}
-          <button type="button" onClick={onToggle}
-            aria-label={liked ? "取消收藏" : "收藏"}
-            className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-              liked ? "text-red-500 bg-red-50 hover:bg-red-100"
-                    : "text-stone-300 hover:text-red-400 hover:bg-red-50"
-            }`}>
-            {liked ? (
-              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+        <div className="min-w-0">
+          {liked && (
+            <span className="inline-flex items-center gap-1 text-xs text-red-500 mb-1">
+              <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current shrink-0">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
+              已收藏
+            </span>
+          )}
+          <a href={book.notionUrl} target="_blank" rel="noopener noreferrer"
+            className="text-sm font-medium text-shelf-600 hover:underline truncate block">
+            {book.bookTitle}
+          </a>
+          {book.author && <p className="text-xs text-ink-muted mt-0.5">{book.author}</p>}
+          <div className="flex gap-2 mt-1 flex-wrap">
+            {book.musicUrl && (
+              <a href={book.musicUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
+                🎵 音乐
+              </a>
             )}
-          </button>
+            {book.videoUrl && (
+              <a href={book.videoUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
+                🎬 视频
+              </a>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* 🎨 和 ❤️ 固定在卡片右下角，absolute 让位置不受内容高度影响 */}
+      <div className="absolute bottom-4 right-4 flex items-center gap-1">
+        <div className="relative group">
+          <button type="button" onClick={onMakeCard}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-stone-300 hover:text-shelf-500 hover:bg-shelf-50 transition-colors text-base">
+            🎨
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-ink text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            制作语录卡
+          </span>
+        </div>
+
+        <button type="button" onClick={onToggle}
+          aria-label={liked ? "取消收藏" : "收藏"}
+          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+            liked ? "text-red-500 bg-red-50 hover:bg-red-100"
+                  : "text-stone-300 hover:text-red-400 hover:bg-red-50"
+          }`}>
+          {liked ? (
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   );
