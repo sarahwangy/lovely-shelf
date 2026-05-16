@@ -53,15 +53,27 @@ type HAlign   = "left" | "center" | "right";
 
 // 语录卡样式快照，存 localStorage，打开制作室时恢复
 export type CardStyle = {
-  textColor: string;
-  fontSize:  FontSize;
-  vPos:      VPos;
-  hAlign:    HAlign;
-  showWave:  boolean;
-  bgType:    BgType;
-  bgValue:   string;
-  videoSrc:  string;
+  textColor:  string;
+  fontSize:   FontSize;
+  fontFamily: FontFamily;
+  vPos:       VPos;
+  hAlign:     HAlign;
+  showWave:   boolean;
+  bgType:     BgType;
+  bgValue:    string;
+  videoSrc:   string;
 };
+
+// 字体选项：label 显示名、css 用于 DOM 预览、canvas 用于 canvas ctx.font、google 是 Google Fonts 参数
+const FONT_OPTIONS = [
+  { label: "现代",  css: "system-ui, -apple-system, sans-serif",  canvas: "system-ui",           google: null },
+  { label: "正式",  css: "'Noto Serif SC', serif",                 canvas: "'Noto Serif SC'",     google: "Noto+Serif+SC:wght@400;600" },
+  { label: "可爱",  css: "'ZCOOL KuaiLe', cursive",               canvas: "'ZCOOL KuaiLe'",      google: "ZCOOL+KuaiLe" },
+  { label: "手写",  css: "'Ma Shan Zheng', cursive",              canvas: "'Ma Shan Zheng'",     google: "Ma+Shan+Zheng" },
+  { label: "优雅",  css: "'ZCOOL XiaoWei', serif",                canvas: "'ZCOOL XiaoWei'",     google: "ZCOOL+XiaoWei" },
+  { label: "毛笔",  css: "'Liu Jian Mao Cao', cursive",           canvas: "'Liu Jian Mao Cao'",  google: "Liu+Jian+Mao+Cao" },
+] as const;
+type FontFamily = (typeof FONT_OPTIONS)[number]["css"];
 
 const FONT_SIZE_LABEL: Record<FontSize, string> = { xs: "小", sm: "中", base: "大", lg: "特大" };
 const FONT_SIZE_CLASS: Record<FontSize, string> = {
@@ -146,8 +158,9 @@ export default function QuoteStudio({
   const [author,    setAuthor]    = useState(initialAuthor);
 
   // ── 文字样式（有 initialStyle 时恢复上次的设置，否则用默认值）──────
-  const [textColor, setTextColor] = useState(initialStyle?.textColor ?? "#ffffff");
-  const [fontSize,  setFontSize]  = useState<FontSize>(initialStyle?.fontSize ?? "sm");
+  const [textColor,   setTextColor]   = useState(initialStyle?.textColor ?? "#ffffff");
+  const [fontSize,    setFontSize]    = useState<FontSize>(initialStyle?.fontSize ?? "sm");
+  const [fontFamily,  setFontFamily]  = useState<FontFamily>(initialStyle?.fontFamily ?? FONT_OPTIONS[0].css);
   const [vPos,      setVPos]      = useState<VPos>(initialStyle?.vPos ?? "center");
   const [hAlign,    setHAlign]    = useState<HAlign>(initialStyle?.hAlign ?? "center");
   const [showWave,  setShowWave]  = useState(initialStyle?.showWave ?? false);
@@ -203,6 +216,21 @@ export default function QuoteStudio({
   const [recording,      setRecording]      = useState(false);
   const [recordDuration, setRecordDuration] = useState(5);
   const [saveError,      setSaveError]      = useState<string | null>(null);
+
+  // ── Google Fonts 动态加载 ────────────────────────────────────────
+  // 每当字体切换时，把对应的 Google Fonts <link> 注入 <head>（已注入则跳过）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const option = FONT_OPTIONS.find((f) => f.css === fontFamily);
+  if (typeof window !== "undefined" && option?.google) {
+    const id = `gf-${option.google.split(":")[0].replace(/\+/g, "-")}`;
+    if (!document.getElementById(id)) {
+      const link = document.createElement("link");
+      link.id   = id;
+      link.rel  = "stylesheet";
+      link.href = `https://fonts.googleapis.com/css2?family=${option.google}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }
 
   // ── 背景 CSS ──────────────────────────────────────────────────────
   const cardStyle = useMemo<React.CSSProperties>(() => {
@@ -351,6 +379,7 @@ export default function QuoteStudio({
     const style: CardStyle = {
       textColor,
       fontSize,
+      fontFamily,
       vPos,
       hAlign,
       showWave,
@@ -479,15 +508,16 @@ export default function QuoteStudio({
 
       let y = vPos === "top" ? padX : vPos === "bottom" ? H * 0.45 : H * 0.28;
 
-      // 语句（自动换行）
-      ctx.font = `600 ${fontPx[fontSize]}px -apple-system, system-ui, sans-serif`;
+      // 语句（自动换行）：使用用户选择的字体
+      const canvasFont = FONT_OPTIONS.find((f) => f.css === fontFamily)?.canvas ?? "system-ui";
+      ctx.font = `600 ${fontPx[fontSize]}px ${canvasFont}`;
       const lines = wrapCanvasText(ctx, text || "在这里输入你的语句…", W - padX * 2);
       const lh    = fontPx[fontSize] * 1.5;
       for (const line of lines) { ctx.fillText(line, xPos, y); y += lh; }
 
       // 书名 / 作者
       if (bookTitle) {
-        ctx.font = `${11*SCALE}px -apple-system, system-ui, sans-serif`;
+        ctx.font = `${11*SCALE}px ${canvasFont}`;
         ctx.globalAlpha = 0.7;
         ctx.fillText(`— ${bookTitle}${author ? ` · ${author}` : ""}`, xPos, y + 8*SCALE);
         ctx.globalAlpha = 1;
@@ -612,12 +642,12 @@ export default function QuoteStudio({
                 {/* 卡片内容 */}
                 <div className={`relative z-10 px-5 w-full flex flex-col gap-2 ${itemsClass} ${paddingClass}`}>
                   <p className={`leading-relaxed font-medium w-full ${FONT_SIZE_CLASS[fontSize]} ${textAlignClass}`}
-                    style={{ color: textColor, textShadow }}>
+                    style={{ color: textColor, textShadow, fontFamily }}>
                     {text || "在这里输入你的语句…"}
                   </p>
                   {bookTitle && (
                     <p className={`text-xs w-full ${textAlignClass}`}
-                      style={{ color: textColor, textShadow, opacity: 0.7 }}>
+                      style={{ color: textColor, textShadow, opacity: 0.7, fontFamily }}>
                       — {bookTitle}{author ? ` · ${author}` : ""}
                     </p>
                   )}
@@ -913,6 +943,24 @@ export default function QuoteStudio({
                         fontSize === size ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
                       }`}>
                       {FONT_SIZE_LABEL[size]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── 字体类型 ── */}
+              <div className="pt-3 border-t border-stone-100">
+                <p className="text-xs font-medium text-ink-muted mb-2">字体类型</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {FONT_OPTIONS.map((f) => (
+                    <button key={f.css} type="button" onClick={() => setFontFamily(f.css)}
+                      className={`py-2 px-1 rounded-xl text-sm transition-colors ${
+                        fontFamily === f.css
+                          ? "bg-shelf-100 text-shelf-700 shadow-sm"
+                          : "bg-stone-50 text-ink-muted hover:bg-stone-100"
+                      }`}
+                      style={{ fontFamily: f.css }}>
+                      {f.label}
                     </button>
                   ))}
                 </div>
