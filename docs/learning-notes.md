@@ -556,3 +556,31 @@
 
 - **一句话总结：**
   "导出"是前端最考验底层知识的功能——PNG 导出靠 SVG foreignObject 绕过 CSS 兼容问题，MP4 录制靠 canvas 帧级合成 + MediaRecorder，两条路都绕开了"直接截 DOM"的局限。
+
+---
+
+### T29 - 状态持久化 + 数据导出 + 第三方音乐 API
+
+- **学到的核心概念：**
+  - **localStorage 作为轻量持久化层**：不是所有数据都值得存数据库。卡片样式（颜色、字号、背景）是用户偏好，存 localStorage 就够——读写同步、不需要网络请求、刷新后还在。设计原则：数据有多重要，就用多重的存储（localStorage → 数据库 → 分布式存储）
+  - **Props 初始值 vs 受控状态**：`useState(initialStyle?.textColor ?? "#ffffff")` 只在组件首次挂载时生效，后续 `initialStyle` 变化不会自动更新 state。这是 React 的设计——"uncontrolled initialization"（不受控初始化）。适合"打开时确定初始值，之后用户自己改"的场景
+  - **`export type` 跨文件共享**：`QuoteStudio.tsx` 里的 `CardStyle` 类型加了 `export`，`page.tsx` 用 `import type { CardStyle } from "./QuoteStudio"` 引入。`import type` 是纯 TypeScript 语法，编译后完全消失，不影响 dynamic import 的运行时行为
+  - **Tailwind `group` + `group-hover` 实现自定义 tooltip**：在父元素加 `group` class，子元素用 `opacity-0 group-hover:opacity-100` 在父元素 hover 时显示。比浏览器原生 `title` 属性好的地方：即时显示、样式可控、位置可控。这是 Tailwind 里实现 hover 联动最常用的模式
+  - **`<button>` 不能嵌套 `<button>`**：HTML 规范明确禁止，浏览器会做"纠错解析"——自动把内层 button 提到外层之后，导致 React 期望的 DOM 结构和实际 DOM 不一致，引发 hydration error。解决：把外层改成 `<div onClick>`，去掉 `role="button"`（避免无障碍工具报"交互控件嵌套"）
+  - **音频代理路由的安全边界**：代理路由是"帮浏览器绕过 CORS 的中间人"，本质上有安全风险——如果允许代理任意 URL，就变成了"SSRF（服务端请求伪造）"攻击的跳板。所以必须加白名单。用 `hostname.endsWith(".jamendo.com")` 而不是枚举子域名，因为 CDN 子域名是动态的（如 `prod-1.storage.jamendo.com`）
+
+- **用到的关键 API/函数：**
+  - `localStorage.setItem(key, JSON.stringify(obj))` / `JSON.parse(localStorage.getItem(key))` — 存取结构化数据的标准模式，记得 try/catch（存储满了会抛 QuotaExceededError）
+  - `new Blob([content], { type: "text/markdown;charset=utf-8" })` — 在浏览器内存里创建文件，配合 `URL.createObjectURL` + `<a download>` 实现无服务端下载
+  - `"﻿" + content`（BOM 字节序标记）— TSV/CSV 文件开头加 `﻿`，让 Excel / Numbers 正确识别 UTF-8 编码，否则中文会乱码
+  - `URL.createObjectURL(blob)` / `URL.revokeObjectURL(url)` — 创建临时下载链接后必须调用 revoke，否则内存泄漏
+  - `audioEl.src = ""` — 彻底停止 HTMLAudioElement：先 `pause()` 暂停，再清空 src 才能断开 Web Audio 图并释放解码器资源，只 `pause()` 不够
+
+- **容易踩的坑：**
+  - **Pixabay 没有音乐 API**：返回 404，不存在 `/api/music/` 端点。遇到第三方 API 404，优先查官方文档确认端点是否存在，不要猜——我猜错了一次
+  - **子域名白名单要用 `endsWith` 不用精确匹配**：CDN 会动态分配子域名（`prod-1.storage.jamendo.com`、`prod-2.storage.jamendo.com`…），枚举不完。`hostname.endsWith(".jamendo.com")` 一行搞定所有子域
+  - **`recorder.onstop` 的闭包陷阱**：`onstop` 里引用的变量是定义时捕获的快照值，不是最新的 state。但在我们的场景里这反而是对的——录制开始时的配置就是用户想要保存的配置，不需要追踪后续变化
+  - **BOM 不加 Excel 乱码**：`new Blob([content])` 直接写内容，Excel 看到没有 BOM 的 UTF-8 文件会用系统默认编码（Windows 是 GBK），中文全乱。`"﻿"` 是 Unicode 字节序标记，加在最前面 Excel 就能识别 UTF-8
+
+- **一句话总结：**
+  持久化有三个层次：组件内 state（刷新丢失）→ localStorage（跨会话保留）→ 数据库（跨设备同步）；这次用 localStorage 存卡片样式是刚好合适的选择——轻量、够用、不过度设计。
