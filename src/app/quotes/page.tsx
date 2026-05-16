@@ -90,6 +90,7 @@ type StudioTarget = {
   canSave:          boolean;
   styleKey?:        string;       // localStorage key，制作室用来保存/读取样式
   initialStyle?:    CardStyle;    // 上次使用的样式（若有）
+  onTextChanged?:   (newText: string) => void; // 文字被修改时更新本地卡片显示
 };
 
 export default function QuotesPage() {
@@ -143,6 +144,17 @@ export default function QuotesPage() {
       canSave:          false,
       styleKey:         key,
       initialStyle:     saved,
+      // 文字被修改后，只更新本地 books state（不写回 Notion）
+      onTextChanged: (newText: string) => {
+        setBooks((prev) =>
+          prev.map((b) =>
+            b.pageId !== book.pageId ? b : {
+              ...b,
+              quotes: b.quotes.map((q, i) => (i === idx ? newText : q)),
+            }
+          )
+        );
+      },
     });
   }
 
@@ -297,6 +309,7 @@ export default function QuotesPage() {
           initialStyle={studio.initialStyle}
           styleKey={studio.styleKey}
           onSaved={studio.canSave ? handleQuoteSaved : undefined}
+          onTextChanged={studio.onTextChanged}
           onClose={() => setStudio(null)}
         />
       )}

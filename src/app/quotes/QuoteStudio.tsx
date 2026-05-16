@@ -142,6 +142,7 @@ export default function QuoteStudio({
   initialStyle,
   styleKey,
   onSaved,
+  onTextChanged,
   onClose,
 }: {
   initialText?:      string;
@@ -150,6 +151,7 @@ export default function QuoteStudio({
   initialStyle?:     CardStyle;     // 上次使用的卡片样式（从 localStorage 读取）
   styleKey?:         string;        // localStorage key，导出后用来保存样式
   onSaved?:          (book: QuoteBook) => void;
+  onTextChanged?:    (newText: string) => void; // 样式编辑模式下文字被修改后的回调
   onClose:           () => void;
 }) {
   // ── 卡片内容 ──────────────────────────────────────────────────────
@@ -693,6 +695,25 @@ export default function QuoteStudio({
                   className="w-full py-2.5 rounded-xl text-sm font-medium bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-300 text-white transition-colors">
                   {exporting ? "导出中…" : "⬇ 导出 PNG"}
                 </button>
+              )}
+
+              {/* 样式编辑模式（从 🎨 打开）：明确的保存 / 取消 */}
+              {!onSaved && styleKey && (
+                <div className="w-full flex gap-2">
+                  <button type="button" onClick={onClose}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium bg-stone-100 text-ink-muted hover:bg-stone-200 transition-colors">
+                    取消
+                  </button>
+                  <button type="button" onClick={() => {
+                    saveStyle();
+                    // 如果文字被修改过，通知父组件更新卡片显示
+                    if (onTextChanged && text !== initialText) onTextChanged(text);
+                    onClose();
+                  }}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium bg-ink hover:bg-ink/80 text-white transition-colors">
+                    保存样式
+                  </button>
+                </div>
               )}
             </div>
 
