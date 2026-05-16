@@ -403,14 +403,24 @@ export async function fetchManualPageQuotes(pageId: string): Promise<string[]> {
       headers: { Authorization: `Bearer ${NOTION_TOKEN}`, "Notion-Version": "2022-06-28" },
     });
     const data = (await res.json()) as {
-      results: { type: string; paragraph?: { rich_text: { plain_text: string }[] } }[];
+      results: {
+        type: string;
+        paragraph?: { rich_text: { plain_text: string }[] };
+        callout?:   { rich_text: { plain_text: string }[] };
+      }[];
       has_more: boolean;
       next_cursor: string | null;
     };
 
     for (const block of data.results) {
-      if (block.type === "paragraph" && block.paragraph?.rich_text?.length) {
-        const text = block.paragraph.rich_text.map((r) => r.plain_text).join("").trim();
+      // 读取 callout（新格式）和 paragraph（旧格式）两种 block
+      const richText = block.type === "callout"
+        ? block.callout?.rich_text
+        : block.type === "paragraph"
+          ? block.paragraph?.rich_text
+          : undefined;
+      if (richText?.length) {
+        const text = richText.map((r: { plain_text: string }) => r.plain_text).join("").trim();
         if (text) quotes.push(text);
       }
     }
@@ -428,7 +438,7 @@ export async function appendManualQuote(
   const { musicUrl, videoUrl } = opts;
   const pageId = await findOrCreateManualPage();
 
-  // 追加 paragraph block 到页面正文（每条语录独立一段）
+  // 追加 callout block 到页面正文（每条语录独立一个高亮框）
   await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
     method: "PATCH",
     headers: {
@@ -439,8 +449,12 @@ export async function appendManualQuote(
     body: JSON.stringify({
       children: [{
         object: "block",
-        type: "paragraph",
-        paragraph: { rich_text: [{ type: "text", text: { content: text.trim() } }] },
+        type: "callout",
+        callout: {
+          rich_text: [{ type: "text", text: { content: text.trim() } }],
+          icon:  { type: "emoji", emoji: "✨" },
+          color: "blue_background",
+        },
       }],
     }),
   });
