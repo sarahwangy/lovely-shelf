@@ -584,3 +584,28 @@
 
 - **一句话总结：**
   持久化有三个层次：组件内 state（刷新丢失）→ localStorage（跨会话保留）→ 数据库（跨设备同步）；这次用 localStorage 存卡片样式是刚好合适的选择——轻量、够用、不过度设计。
+
+---
+
+### T30 - UI 细节打磨 + Notion 页面 Block 写入
+
+- **学到的核心概念：**
+  - **`absolute` 定位脱离文档流**：当一个元素设置 `position: absolute`，它就"浮"出了正常排版流，父容器不再为它留空间。父容器需要加 `position: relative` 成为"定位参照"，同时给内容区加 `padding-bottom` 避免文字和绝对定位的按钮重叠。这是让按钮在所有卡片上保持同一位置的关键技术
+  - **Notion 属性 vs 页面正文 Block**：Notion 的 database page 有两个存内容的区域：① **属性（Properties）**——结构化字段，每个字段有类型（文字、选项、文件…），有长度限制（rich_text 单段最多 2000 字符）；② **页面正文（Page Body）**——由 Block 组成的文档内容，每个 block 是独立单元，可以无限添加。两者对应不同的 API 端点：属性用 `PATCH /v1/pages/{id}`，正文用 `PATCH /v1/blocks/{id}/children`
+  - **Notion Block API**：Notion 把页面正文里的每一段文字、每一张图片、每一个代码块都叫做"Block"。追加内容用 `PATCH /v1/blocks/{pageId}/children`，请求体的 `children` 是 block 数组；读取用 `GET /v1/blocks/{pageId}/children`。`type: "paragraph"` 是最基础的文字段落 block
+  - **Notion 数据库过滤器的 `and` 组合**：Notion query API 的 `filter` 字段支持 `{ and: [...] }` 把多个条件组合——类似 SQL 的 `WHERE a AND b`。这次用来"排除特定页面"：`{ and: [{ 优美语句 is_not_empty }, { 书名 does_not_equal "手动语录" }] }`，让手动语录页走单独的 block 读取逻辑
+  - **Tailwind `group` / `group-hover` tooltip 模式**：父元素加 `group` class，子 tooltip span 加 `opacity-0 group-hover:opacity-100 transition-opacity`，hover 父元素时 tooltip 淡入。相比 `title` 属性：零延迟、样式完全可控、可以做圆角/阴影。这是行业标准的 CSS-only tooltip 方案
+
+- **用到的关键 API/函数：**
+  - `PATCH https://api.notion.com/v1/blocks/{pageId}/children` — 向 Notion 页面正文追加 block，`children` 数组里每个对象是一个 block（`{ object: "block", type: "paragraph", paragraph: { rich_text: [...] } }`）
+  - `GET https://api.notion.com/v1/blocks/{pageId}/children?page_size=100` — 读取页面正文所有 block，支持 `start_cursor` 分页
+  - Notion filter `does_not_equal` — 排除特定值，和 `equals` 对应，常用于"除某页外查全部"
+  - `prev.map(b => b.pageId === id ? newBook : b)` — React state 里替换特定元素的惯用写法：`map` 遍历，命中的返回新值，其余原样返回
+
+- **容易踩的坑：**
+  - **只改属性、忘了读 Block**：第一版把语录存进了 `优美语句` 属性字段（结构化 property），用户打开 Notion 页面看到的是字段里的文字，不是页面正文的大片空白区。要写进"下面一大片空白"，必须用 Block API，两者是完全不同的端点
+  - **`handleQuoteSaved` 里用追加会造成重复**：手动语录都指向同一个 Notion 页面（`pageId` 相同），每次添加后如果直接 `[book, ...prev]`，会在列表里出现多个"手动语录"条目。正确做法：先用 `prev.some(b => b.pageId === book.pageId)` 检测是否已存在，存在则用 `map` 替换，不存在才插入
+  - **Block 读取也要分页**：`GET /blocks/{id}/children` 每次最多返回 100 条。如果用户有超过 100 条手写语录，需要用 `has_more` + `next_cursor` 循环读取。当前实现已处理分页
+
+- **一句话总结：**
+  Notion 页面里的"属性字段"和"正文内容"是完全不同的存储区域、不同的 API——前者适合结构化的书名/作者，后者适合自由内容（语录、笔记）；搞清楚这个区别，就能把数据存到用户真正期望看到的地方。
