@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
 import type { QuoteBook } from "@/app/api/quotes/route";
@@ -105,19 +105,32 @@ export default function QuotesPage() {
   const [tab,        setTab]        = useState<"all" | "manual" | "notion" | "liked">("all");
   const [quotePage,  setQuotePage]  = useState(1);
 
+  // 用户是否已手动保存过语录
+  // 用 ref 而不是 state：只需要在 GET 响应里读取，不需要触发重渲染
+  const userSavedRef = useRef(false);
+
   // tab 切换时回到第一页
   useEffect(() => { setQuotePage(1); }, [tab]);
 
   useEffect(() => {
+    // React 18 Strict Mode 会把 effect 跑两次（第一次 + cleanup + 第二次）
+    // 用 cancelled flag 取消第一次 fetch 的回调，只让第二次 fetch 更新状态
+    // 否则：第一次 fetch 先完成 → 用户保存语录 → 第二次 fetch 完成覆盖 → 语录消失
+    let cancelled = false;
+
     setLikes(loadLikes());
     fetch("/api/quotes")
       .then((r) => r.json())
       .then((data: { books: QuoteBook[]; error?: string }) => {
+        if (cancelled) return;             // 被 cleanup 取消了，忽略
+        if (userSavedRef.current) return;  // 用户已保存过，不允许 GET 覆盖状态
         if (data.error) throw new Error(data.error);
         setBooks(data.books);
       })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: Error) => { if (!cancelled) setError(e.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; }; // effect cleanup：取消第一次 fetch
   }, []);
 
   function toggleLike(key: string) {
@@ -130,6 +143,8 @@ export default function QuotesPage() {
   }
 
   function handleQuoteSaved(book: QuoteBook) {
+    // 标记"用户已手动保存"，阻止后续到达的 GET 响应覆盖这次更新
+    userSavedRef.current = true;
     setBooks((prev) => {
       // 若"手动语录"页已在列表中，替换它（追加了新语句）；否则插到最前面
       const exists = prev.some((b) => b.pageId === book.pageId);
