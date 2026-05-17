@@ -92,20 +92,6 @@ export const DEMO_BOOKS: QuoteBook[] = [
     videoUrl: null,
   },
   {
-    pageId:    "demo-6",
-    notionUrl: "#",
-    bookTitle: "挪威的森林",
-    author:    "村上春树",
-    coverUrl:  null,
-    quotes: [
-      "死并非生的对立面，而是作为生的一部分永存。",
-      "哪里会有人喜欢孤独，不过是不喜欢失望。",
-      "每个人都有属于自己的一片森林，迷失的人迷失了，相逢的人会再相逢。",
-    ],
-    musicUrl: null,
-    videoUrl: null,
-  },
-  {
     pageId:    "demo-7",
     notionUrl: "#",
     bookTitle: "当下的力量",
@@ -163,9 +149,6 @@ function book(
 // 32 本书，对应 buildDemoStats() 里的五个分类
 const DEMO_BOOKS_FULL: DemoBookFull[] = [
   // ── 小说 (14) ────────────────────────────────────────────────────
-  book("demo-b01","小说","挪威的森林","村上春树","日本",["其他"],"0375704027",
-    "1960年代末东京，渡边彻在失落与爱之间的青春成长。",
-    ["死并非生的对立面，而是作为生的一部分永存。","哪里会有人喜欢孤独，不过是不喜欢失望。"]),
   book("demo-b02","小说","活着","余华","中国",["其他"],"1400033438",
     "农民福贵历经战乱与苦难，顽强活下去的故事。",
     ["人是为了活着本身而活着，不是为了活着以外的任何事物。"]),
@@ -295,7 +278,6 @@ export function getDemoBookDetail(pageId: string): BookDetail | null {
 
 // 上传页 demo 识别结果（轮转，避免每次都是同一本书）
 const DEMO_PROCESS_POOL: BookInfo[] = [
-  { title:"挪威的森林", subtitle:"", author:"村上春树", gender:"男", country:"日本",   genres:["其他"],              description:"1960年代末东京，渡边彻在失落与爱之间的青春成长。", quotes:["死并非生的对立面，而是作为生的一部分永存。"] },
   { title:"被讨厌的勇气", subtitle:"自我启发之父阿德勒的哲学课", author:"岸见一郎 / 古贺史健", gender:"男", country:"日本", genres:["心理相关","励志"], description:"以哲人与青年对话阐述阿德勒心理学。", quotes:["决定我们自身的，不是过去的经历，而是我们赋予经历的意义。"] },
   { title:"小王子",   subtitle:"", author:"圣·埃克苏佩里", gender:"男", country:null,   genres:["儿童读物"],          description:"小王子游历各星球，领悟爱与责任的真谛。", quotes:["真正重要的东西，用眼睛是看不见的。"] },
   { title:"瓦尔登湖", subtitle:"", author:"亨利·戴维·梭罗", gender:"男", country:"美国", genres:["其他"],              description:"梭罗独居湖畔两年，追求简朴生活与自我觉知。", quotes:["大多数人都生活在平静的绝望中。"] },
@@ -326,7 +308,7 @@ function buildRecentActivity(): { date: string; count: number }[] {
   });
 }
 
-const DEMO_LATEST: BookSummary[] = ["demo-b01","demo-b15","demo-b16","demo-b23","demo-b02"]
+const DEMO_LATEST: BookSummary[] = ["demo-b02","demo-b15","demo-b16","demo-b23","demo-b03"]
   .map((id) => {
     const b = DEMO_BOOKS_FULL.find((x) => x.pageId === id)!;
     return { pageId: b.pageId, title: b.title, author: b.author, coverUrl: b.coverUrl, notionUrl: "#" };
