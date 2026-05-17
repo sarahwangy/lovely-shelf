@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
 import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre, listBooksByGenre } from "@/lib/notion";
-import { getDemoProcessResult } from "@/lib/demo-data";
+import { getDemoBooksForGenre } from "@/lib/demo-data";
 import type { BookSummary } from "@/types/book";
 import type { BookInfo } from "@/types/book";
 
@@ -25,11 +25,6 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  // Demo 模式：不调 AI / Notion，返回轮转假数据
-  if (session.user.email === "demo@lovely-shelf.com") {
-    return NextResponse.json({ success: true, isDuplicate: false, ...getDemoProcessResult() });
   }
 
   const reqStart = Date.now();
@@ -72,6 +67,20 @@ export async function POST(request: NextRequest) {
         { success: false, error: `AI 识别失败：${(err as Error).message}` },
         { status: 422 }
       );
+    }
+
+    // Demo 模式：AI 识别完就返回，不碰 Notion 任何数据
+    if (session.user.email === "demo@lovely-shelf.com") {
+      const primaryGenre = bookInfo.genres[0] ?? "小说";
+      log("total", "ok", Date.now() - reqStart, "demo shortcut");
+      return NextResponse.json({
+        success: true,
+        isDuplicate: false,
+        bookInfo,
+        pageUrl: "#",
+        stats: { primaryGenre, countInGenre: 14 },
+        recommendations: getDemoBooksForGenre(primaryGenre).slice(0, 5),
+      });
     }
 
     // 第三步：查重（识别完就查，写入前）

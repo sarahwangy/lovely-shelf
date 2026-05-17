@@ -145,6 +145,8 @@ export default function QuotesPage() {
   function handleQuoteSaved(book: QuoteBook) {
     // 标记"用户已手动保存"，阻止后续到达的 GET 响应覆盖这次更新
     userSavedRef.current = true;
+    // GET 可能还未完成（loading=true），保存后强制退出加载态，让 tab 栏显示
+    setLoading(false);
     setBooks((prev) => {
       // 若"手动语录"页已在列表中，替换它（追加了新语句）；否则插到最前面
       const exists = prev.some((b) => b.pageId === book.pageId);

@@ -3,7 +3,8 @@ import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { runBookAgent } from "@/lib/agent";
 import { countBooksByGenre, listBooksByGenre } from "@/lib/notion";
-import { getDemoProcessResult } from "@/lib/demo-data";
+import { getDemoBooksForGenre } from "@/lib/demo-data";
+import { recognizeBook } from "@/lib/ai";
 import type { BookSummary } from "@/types/book";
 
 function log(step: string, status: "ok" | "err", ms: number, extra?: string) {
@@ -16,11 +17,6 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
-  }
-
-  // Demo 模式：不调用 AI / Notion，返回轮转假数据，绝不碰真实书库
-  if (session.user.email === "demo@lovely-shelf.com") {
-    return NextResponse.json({ success: true, isDuplicate: false, ...getDemoProcessResult() });
   }
 
   const reqStart = Date.now();
@@ -40,6 +36,23 @@ export async function POST(request: NextRequest) {
     let t = Date.now();
     const { jpegBuffer, base64 } = await preprocessImage(buffer);
     log("preprocess", "ok", Date.now() - t, filename);
+
+    // Demo 模式：AI 识别真实书封面，但跳过所有 Notion 操作
+    if (session.user.email === "demo@lovely-shelf.com") {
+      t = Date.now();
+      const bookInfo = await recognizeBook(base64);
+      log("recognize", "ok", Date.now() - t, bookInfo.title);
+      const primaryGenre = bookInfo.genres[0] ?? "小说";
+      log("total", "ok", Date.now() - reqStart, "demo shortcut");
+      return NextResponse.json({
+        success: true,
+        isDuplicate: false,
+        bookInfo,
+        pageUrl: "#",
+        stats: { primaryGenre, countInGenre: 14 },
+        recommendations: getDemoBooksForGenre(primaryGenre).slice(0, 5),
+      });
+    }
 
     // 启动 Agent：内部会自动跑完整个工具调用循环
     t = Date.now();
