@@ -137,6 +137,9 @@ export default function QuotesPage() {
         ? prev.map((b) => (b.pageId === book.pageId ? book : b))
         : [book, ...prev];
     });
+    // 切回"全部"tab + 第 1 页，确保用户能立刻看到新添加的语录
+    setTab("all");
+    setQuotePage(1);
     setStudio(null);
   }
 

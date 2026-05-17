@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { runBookAgent } from "@/lib/agent";
 import { countBooksByGenre, listBooksByGenre } from "@/lib/notion";
+import { getDemoProcessResult } from "@/lib/demo-data";
 import type { BookSummary } from "@/types/book";
 
 function log(step: string, status: "ok" | "err", ms: number, extra?: string) {
@@ -15,6 +16,11 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
+  }
+
+  // Demo 模式：不调用 AI / Notion，返回轮转假数据，绝不碰真实书库
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json({ success: true, isDuplicate: false, ...getDemoProcessResult() });
   }
 
   const reqStart = Date.now();
