@@ -120,6 +120,8 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: "未登录" }), { status: 401 });
   }
 
+  const isDemo = session.user.email === "demo@lovely-shelf.com";
+
   const formData    = await request.formData();
   const messagesRaw = formData.get("messages") as string;
   const imageFile   = formData.get("image") as File | null;
@@ -219,6 +221,7 @@ export async function POST(request: NextRequest) {
                 base64,
                 jpegBuffer,
                 filename,
+                isDemo,
               });
             } catch (err) {
               result = { error: (err as Error).message };
@@ -253,10 +256,87 @@ export async function POST(request: NextRequest) {
   });
 }
 
+// ── Demo 模式假数据 ────────────────────────────────────────────────
+// 轮流返回不同的"识别结果"，让 demo 每次上传都感觉不一样
+const DEMO_RECOGNIZE_POOL: BookInfo[] = [
+  {
+    title: "挪威的森林", subtitle: "", author: "村上春树", gender: "男",
+    country: "日本", genres: ["其他"],
+    description: "一部以1960年代末东京为背景的成长小说，讲述主人公渡边彻的青春与失落。",
+    quotes: ["死并非生的对立面，而是作为生的一部分永存。", "哪里会有人喜欢孤独，不过是不喜欢失望。"],
+  },
+  {
+    title: "小王子", subtitle: "", author: "圣·埃克苏佩里", gender: "男",
+    country: null, genres: ["儿童读物"],
+    description: "一个飞行员在沙漠中遇见小王子，听他讲述自己星球上的故事。",
+    quotes: ["真正重要的东西，用眼睛是看不见的。", "你在你的玫瑰身上耗费的时间，使你的玫瑰变得如此重要。"],
+  },
+  {
+    title: "被讨厌的勇气", subtitle: "自我启发之父阿德勒的哲学课", author: "岸见一郎 / 古贺史健", gender: "男",
+    country: "日本", genres: ["心理相关", "励志"],
+    description: "以哲人与青年的对话形式，阐述阿德勒心理学的核心思想。",
+    quotes: ["决定我们自身的，不是过去的经历，而是我们自己赋予经历的意义。", "所谓自由，就是被别人讨厌。"],
+  },
+  {
+    title: "瓦尔登湖", subtitle: "", author: "亨利·戴维·梭罗", gender: "男",
+    country: "美国", genres: ["其他"],
+    description: "梭罗独居瓦尔登湖畔两年的生活记录，探讨简朴生活与自然的意义。",
+    quotes: ["我步入丛林，因为我希望生活得有意义。", "大多数人都生活在平静的绝望中。"],
+  },
+];
+
+let _demoRecognizeIdx = 0;
+
+// Demo 模式的书单（用于 list_books_by_genre）
+const DEMO_GENRE_BOOKS = [
+  { title: "活着",       author: "余华",           genres: ["小说"],       quotes: ["人是为了活着本身而活着。"] },
+  { title: "挪威的森林", author: "村上春树",       genres: ["小说"],       quotes: ["死并非生的对立面。"] },
+  { title: "小王子",     author: "圣·埃克苏佩里", genres: ["小说"],       quotes: ["真正重要的东西用眼睛看不见。"] },
+  { title: "百年孤独",   author: "加西亚·马尔克斯", genres: ["小说"],     quotes: ["过去都是假的。"] },
+  { title: "人间失格",   author: "太宰治",         genres: ["小说"],       quotes: ["我的不幸恰恰在于我缺乏拒绝的能力。"] },
+  { title: "被讨厌的勇气", author: "岸见一郎",    genres: ["心理相关", "励志"], quotes: ["决定我们自身的不是过去的经历。"] },
+  { title: "当下的力量", author: "埃克哈特·托利", genres: ["心理相关", "身心健康"], quotes: ["你无法在未来找到自己。"] },
+  { title: "瓦尔登湖",   author: "梭罗",           genres: ["散文"],       quotes: ["我步入丛林，因为我希望生活得有意义。"] },
+];
+
+async function executeDemoTool(name: string, input: Record<string, unknown>): Promise<unknown> {
+  switch (name) {
+    case "recognize_book_from_image": {
+      // 轮流返回不同书，模拟每次上传都识别出不同内容
+      const book = DEMO_RECOGNIZE_POOL[_demoRecognizeIdx % DEMO_RECOGNIZE_POOL.length];
+      _demoRecognizeIdx++;
+      return book;
+    }
+    case "check_duplicate_in_notion":
+      return { exists: false, url: null };
+
+    case "upload_cover_to_notion":
+      return { fileUploadId: "demo-file-upload-id" };
+
+    case "create_notion_page":
+      return { pageUrl: "https://notion.so/demo" };
+
+    case "list_books_by_genre": {
+      const { genre, limit = 5 } = input as { genre: string; limit?: number };
+      const filtered = DEMO_GENRE_BOOKS
+        .filter((b) => genre === "其他" || b.genres.some((g) => g.includes(genre) || genre.includes(g)))
+        .slice(0, limit);
+      // 没有精确匹配时返回前几本，避免空列表
+      return { books: filtered.length > 0 ? filtered : DEMO_GENRE_BOOKS.slice(0, limit) };
+    }
+
+    default:
+      throw new Error(`未知工具：${name}`);
+  }
+}
+
 // 工具执行函数：根据工具名调对应的 lib 函数
-type ToolCtx = { base64: string; jpegBuffer: Buffer | null; filename: string };
+type ToolCtx = { base64: string; jpegBuffer: Buffer | null; filename: string; isDemo: boolean };
 
 async function executeTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<unknown> {
+  // Demo 模式：不调用真实 Notion/AI，返回假数据
+  if (ctx.isDemo) return executeDemoTool(name, input);
+
   switch (name) {
     case "recognize_book_from_image":
       return await recognizeBook(ctx.base64);

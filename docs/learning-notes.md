@@ -656,3 +656,26 @@
 
 - **一句话总结：**
   SVG 路径动画 + CSS keyframes 可以做出媲美设计软件的心跳效果；LLM 生成内容的多样性靠"上游随机抽类别再注入 prompt"来保证，而不是依赖模型自己的随机性。
+
+---
+
+### T33 - Demo 模式：聊天 Agent 假数据隔离
+
+- **学到的核心概念：**
+  - **"Demo 模式"设计模式**：用 `session.user.email === "demo@lovely-shelf.com"` 作为 demo 标识，在 API 路由里提前分叉，demo 用户永远碰不到真实的第三方服务调用。这种做法在 SaaS 产品的"试用体验"设计中非常常见
+  - **工具执行函数的两条分支**：`executeTool` 在函数入口判断 `ctx.isDemo`，是则转到 `executeDemoTool`（返回假数据），否则走真实 Notion/AI 调用。两条路径完全隔离，互不干扰
+  - **Context 对象（ToolCtx）传参**：把多个相关参数打包成一个对象传给工具执行函数，避免函数签名越来越长。`isDemo` 就是这样加入 `ToolCtx` 的，不需要修改所有调用点
+  - **轮转池（Round-robin pool）**：`DEMO_RECOGNIZE_POOL` 里放了 4 本书，用 `_demoRecognizeIdx++` 轮流返回，让 demo 用户每次上传图片都"识别"出不同的书，而不是永远同一本
+
+- **用到的关键 API/函数：**
+  - `DEMO_RECOGNIZE_POOL: BookInfo[]`：4 本书的假识别结果（挪威的森林 / 小王子 / 被讨厌的勇气 / 瓦尔登湖）
+  - `DEMO_GENRE_BOOKS`：8 本书的假书单，供 `list_books_by_genre` 工具按类型过滤返回
+  - `executeDemoTool(name, input)`：所有工具的 demo 版本，`check_duplicate` 始终返回 `exists: false`，`upload_cover` 返回假 ID，`create_notion_page` 返回 `#`
+
+- **容易踩的坑：**
+  - **`BookInfo` 的 `genres` 是严格 enum**（只有 15 个值，没有"小说"或"散文"）：demo 假数据也必须用合法的类型值，否则 TypeScript 编译报错。中文小说类书统一用 `"其他"` 替代
+  - **`Country` 也是严格 enum**（只有 8 个国家）：法国不在列表里，填 `null` 是正确做法
+  - **demo 用户的聊天仍然调用真实 Claude**（AI 对话不 mock）：只有"工具执行"阶段被替换。这样 demo 的对话体验是真实的 AI 回复，只是背后不碰 Notion
+
+- **一句话总结：**
+  Demo 模式 = 在工具执行层插一个分支，用假数据短路真实 API 调用；核心技巧是把 `isDemo` 放进 context 对象一路传下去，而不是在每个调用点单独判断。

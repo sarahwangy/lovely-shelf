@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listAllBooksByGenre } from "@/lib/notion";
+import { getDemoBooksForGenre } from "@/lib/demo-data";
 
 // GET /api/books?genre=回忆录 — 返回某分类下所有书的列表
 export async function GET(req: NextRequest) {
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest) {
   const genre = req.nextUrl.searchParams.get("genre");
   if (!genre) {
     return NextResponse.json({ error: "缺少 genre 参数" }, { status: 400 });
+  }
+
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json(getDemoBooksForGenre(genre));
   }
 
   try {

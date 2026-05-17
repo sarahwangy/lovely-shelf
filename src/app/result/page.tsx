@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ProcessResult } from "@/app/page";
+import type { ProcessResult } from "@/app/upload/page";
 import type { BookSummary } from "@/types/book";
 import BookDetailModal from "@/components/BookDetailModal";
 import NavBar from "@/components/NavBar";
@@ -36,7 +36,7 @@ export default function ResultPage() {
         <span className="text-5xl">📭</span>
         <p className="text-ink-muted text-sm">没有找到识别结果</p>
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/upload")}
           className="bg-shelf-500 hover:bg-shelf-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
         >
           去上传图片
@@ -97,7 +97,7 @@ export default function ResultPage() {
         {/* ── 底部按钮 ── */}
         <div className="mt-8 flex flex-col gap-3">
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/upload")}
             className="w-full bg-shelf-500 hover:bg-shelf-600 active:bg-shelf-700 text-white font-semibold py-4 rounded-2xl transition-colors shadow-md text-base"
           >
             + 继续上传更多

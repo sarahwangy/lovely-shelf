@@ -5,6 +5,8 @@ import { createManualQuote, appendManualQuote, fetchManualPageQuotes, updateManu
 import { preprocessImage } from "@/lib/image";
 import { DEMO_BOOKS } from "@/lib/demo-data";
 
+const DEMO_EMAIL = "demo@lovely-shelf.com";
+
 const DATABASE_ID = process.env.NOTION_DATABASE_ID!;
 const NOTION_TOKEN = process.env.NOTION_TOKEN!;
 
@@ -161,6 +163,27 @@ export async function POST(request: Request) {
 
   if (!text?.trim()) return NextResponse.json({ error: "语句不能为空" }, { status: 400 });
 
+  // Demo 模式：不写 Notion，直接返回假 QuoteBook
+  if (session.user.email === DEMO_EMAIL) {
+    const manual = DEMO_BOOKS.find((b) => b.pageId === "demo-manual")!;
+    if (!bookTitle?.trim()) {
+      // 追加到手动语录（前端会用返回的 book 替换本地的那一条）
+      return NextResponse.json({
+        book: { ...manual, quotes: [...manual.quotes, text.trim()],
+          musicUrl: musicUrl?.trim() || null, videoUrl: videoUrl?.trim() || null },
+      });
+    }
+    // 新书语录
+    return NextResponse.json({
+      book: {
+        pageId: `demo-q-${Date.now()}`, notionUrl: "#",
+        bookTitle: bookTitle.trim(), author: author?.trim() || "",
+        coverUrl: imageUrl ?? null, quotes: [text.trim()],
+        musicUrl: musicUrl?.trim() || null, videoUrl: videoUrl?.trim() || null,
+      } satisfies QuoteBook,
+    });
+  }
+
   // 无书名 → 追加到 Notion "手动语录" 固定页面
   if (!bookTitle?.trim()) {
     const { pageId, pageUrl, allQuotes } = await appendManualQuote(text.trim(), {
@@ -225,6 +248,11 @@ export async function PATCH(request: Request) {
 
   if (!pageId || typeof quoteIdx !== "number" || !newText?.trim()) {
     return NextResponse.json({ error: "参数不完整" }, { status: 400 });
+  }
+
+  // Demo 模式：无 Notion 页面可写，直接返回成功
+  if (session.user.email === DEMO_EMAIL || pageId.startsWith("demo-")) {
+    return NextResponse.json({ ok: true });
   }
 
   try {

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
 import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre, listBooksByGenre } from "@/lib/notion";
+import { getDemoProcessResult } from "@/lib/demo-data";
 import type { BookSummary } from "@/types/book";
 import type { BookInfo } from "@/types/book";
 
@@ -24,6 +25,11 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
+  }
+
+  // Demo 模式：不调 AI / Notion，返回轮转假数据
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json({ success: true, isDuplicate: false, ...getDemoProcessResult() });
   }
 
   const reqStart = Date.now();

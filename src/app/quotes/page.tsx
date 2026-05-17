@@ -93,6 +93,8 @@ type StudioTarget = {
   onTextChanged?:   (newText: string) => void; // 文字被修改时更新本地卡片显示
 };
 
+const QUOTES_PAGE_SIZE = 10;
+
 export default function QuotesPage() {
   const [books,      setBooks]      = useState<QuoteBook[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -101,6 +103,10 @@ export default function QuotesPage() {
   const [studio,     setStudio]     = useState<StudioTarget | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [tab,        setTab]        = useState<"all" | "manual" | "notion" | "liked">("all");
+  const [quotePage,  setQuotePage]  = useState(1);
+
+  // tab 切换时回到第一页
+  useEffect(() => { setQuotePage(1); }, [tab]);
 
   useEffect(() => {
     setLikes(loadLikes());
@@ -176,6 +182,12 @@ export default function QuotesPage() {
     if (tab === "liked")  return likes.has(likeKey(book.pageId, idx));
     return true; // "all"
   });
+
+  const totalQuotePages = Math.ceil(filteredQuotes.length / QUOTES_PAGE_SIZE);
+  const visibleQuotes   = filteredQuotes.slice(
+    (quotePage - 1) * QUOTES_PAGE_SIZE,
+    quotePage * QUOTES_PAGE_SIZE
+  );
 
   const TABS: { key: typeof tab; label: string; icon: string }[] = [
     { key: "all",    label: "全部",    icon: "📖" },
@@ -291,21 +303,59 @@ export default function QuotesPage() {
         )}
 
         {filteredQuotes.length > 0 && (
-          <div className="flex flex-col gap-4">
-            {filteredQuotes.map(({ text, idx, book }) => {
-              const key = likeKey(book.pageId, idx);
-              return (
-                <QuoteCard
-                  key={key}
-                  text={text}
-                  book={book}
-                  liked={likes.has(key)}
-                  onToggle={() => toggleLike(key)}
-                  onMakeCard={() => openStudio(text, book, idx)}
-                />
-              );
-            })}
-          </div>
+          <>
+            <div className="flex flex-col gap-4">
+              {visibleQuotes.map(({ text, idx, book }) => {
+                const key = likeKey(book.pageId, idx);
+                return (
+                  <QuoteCard
+                    key={key}
+                    text={text}
+                    book={book}
+                    liked={likes.has(key)}
+                    onToggle={() => toggleLike(key)}
+                    onMakeCard={() => openStudio(text, book, idx)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* 分页控件：超过 10 句时显示 */}
+            {totalQuotePages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setQuotePage((p) => Math.max(1, p - 1))}
+                  disabled={quotePage === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-stone-200 text-ink-muted hover:bg-stone-50 disabled:opacity-30 transition-colors text-sm"
+                >
+                  ‹
+                </button>
+                {Array.from({ length: totalQuotePages }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setQuotePage(n)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors ${
+                      n === quotePage
+                        ? "bg-shelf-500 text-white"
+                        : "bg-white border border-stone-200 text-ink-muted hover:bg-stone-50"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setQuotePage((p) => Math.min(totalQuotePages, p + 1))}
+                  disabled={quotePage === totalQuotePages}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-stone-200 text-ink-muted hover:bg-stone-50 disabled:opacity-30 transition-colors text-sm"
+                >
+                  ›
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
