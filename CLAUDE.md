@@ -5,7 +5,7 @@
 我是一个刚入门的开发者，正在通过这个项目学习 Next.js / TypeScript / API 集成。
 你的任务不只是写代码，更要帮我理解每一段代码在做什么。
 
-# notion 字段映射表，需要遵守notion.md
+# notion 字段映射表，需要遵守docs/notion.md
 ## 教学模式要求
 
 **每次开始一个 ticket 之前：**
