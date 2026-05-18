@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
 import type { QuoteBook } from "@/app/api/quotes/route";
 import type { CardStyle } from "./QuoteStudio";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // QuoteStudio 依赖 DOM API，必须关闭 SSR
 const QuoteStudio = dynamic(() => import("./QuoteStudio"), { ssr: false });
@@ -96,6 +97,7 @@ type StudioTarget = {
 const QUOTES_PAGE_SIZE = 10;
 
 export default function QuotesPage() {
+  const { t } = useLanguage();
   const [books,      setBooks]      = useState<QuoteBook[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
@@ -210,10 +212,10 @@ export default function QuotesPage() {
   );
 
   const TABS: { key: typeof tab; label: string; icon: string }[] = [
-    { key: "all",    label: "全部",    icon: "📖" },
-    { key: "manual", label: "手写",    icon: "✍️" },
-    { key: "notion", label: "书库语录", icon: "📚" },
-    { key: "liked",  label: "已收藏",  icon: "❤️" },
+    { key: "all",    label: t.quotes.tabAll,         icon: "📖" },
+    { key: "manual", label: t.quotes.tabHandwritten, icon: "✍️" },
+    { key: "notion", label: t.quotes.tabBooks,       icon: "📚" },
+    { key: "liked",  label: t.quotes.tabFavorites,   icon: "❤️" },
   ];
 
   return (
@@ -224,7 +226,7 @@ export default function QuotesPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-ink mb-1">语录</h1>
+              <h1 className="text-2xl font-bold text-ink mb-1">{t.quotes.title}</h1>
               <p className="text-sm text-ink-muted leading-relaxed">
                 这里是你治愈心灵、平静内心的小天地
                 <span className="mx-1.5">·</span>
@@ -299,13 +301,13 @@ export default function QuotesPage() {
           </div>
         )}
 
-        {loading && <div className="text-center py-20 text-ink-muted">加载中…</div>}
+        {loading && <div className="text-center py-20 text-ink-muted">{t.common.loading}</div>}
         {error   && <div className="text-center py-20 text-red-400">{error}</div>}
 
         {!loading && !error && allQuotes.length === 0 && (
           <div className="text-center py-20 text-ink-muted">
             <p className="text-4xl mb-3">✨</p>
-            <p>还没有语录，去上传第一本书，或点击右上角 + 手动添加</p>
+            <p>{t.quotes.noQuotes}</p>
           </div>
         )}
 

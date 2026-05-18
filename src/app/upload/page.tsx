@@ -6,6 +6,7 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { BookInfo, BookSummary } from "@/types/book";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // 每张图片在处理过程中的完整状态
 type FileItem = {
@@ -36,6 +37,7 @@ export type ProcessResult = {
 };
 
 export default function Home() {
+  const { t } = useLanguage();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -285,8 +287,8 @@ export default function Home() {
       <main className="max-w-xl mx-auto px-4 py-10">
         {/* Hero */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-ink mb-2">整理你的书架</h1>
-          <p className="text-ink-muted text-sm">拍一张封面，AI 自动识别并存入 Notion 书库</p>
+          <h1 className="text-2xl font-bold text-ink mb-2">{t.upload.title}</h1>
+          <p className="text-ink-muted text-sm">{t.upload.subtitle}</p>
         </div>
 
         {/* ── HEIC 转换中提示 ── */}
@@ -318,10 +320,10 @@ export default function Home() {
             <div className="w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">📷</span>
             </div>
-            <p className="font-semibold text-ink mb-1">拍照或选择图片</p>
-            <p className="text-ink-light text-sm mb-5">支持 JPG · PNG · HEIC，可多选</p>
+            <p className="font-semibold text-ink mb-1">{t.upload.dragHint}</p>
+            <p className="text-ink-light text-sm mb-5">{t.upload.supportHint}</p>
             <span className="inline-flex items-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors shadow-sm">
-              + 选择图片
+              {t.upload.selectBtn}
             </span>
           </div>
         )}
@@ -437,9 +439,9 @@ export default function Home() {
                   </span>
                   <span className="text-sm text-ink flex-1 truncate">{item.file.name}</span>
                   <span className="text-xs font-medium text-ink-muted">
-                    {item.status === "success" ? "完成" :
-                     item.status === "error" ? "失败" :
-                     item.status === "processing" ? "识别中…" : "等待"}
+                    {item.status === "success" ? t.upload.done :
+                     item.status === "error" ? t.upload.failed :
+                     item.status === "processing" ? t.upload.processing : t.upload.waiting}
                   </span>
                 </div>
               ))}

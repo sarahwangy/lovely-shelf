@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── 类型定义 ─────────────────────────────────────────────────────
 
@@ -327,6 +328,7 @@ function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
 // ── 主页面 ───────────────────────────────────────────────────────
 
 export default function ChatPage() {
+  const { t } = useLanguage();
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [apiMessages, setApiMessages]         = useState<ApiMessage[]>([]);
   const [input, setInput]                     = useState("");
@@ -576,7 +578,7 @@ export default function ChatPage() {
 
                 {/* 文字输入框 */}
                 <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown} placeholder="和 AI 聊聊你的书架…" disabled={isStreaming} rows={1}
+                  onKeyDown={handleKeyDown} placeholder={t.chat.placeholder} disabled={isStreaming} rows={1}
                   className="flex-1 resize-none bg-shelf-50 border border-stone-200 rounded-2xl px-4 py-2.5 text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors disabled:opacity-50" />
 
                 {/* 发送按钮 */}

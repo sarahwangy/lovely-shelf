@@ -10,6 +10,7 @@ import type { StatsData } from "@/app/api/stats/route";
 import type { BookSummary } from "@/types/book";
 import BookDetailModal from "@/components/BookDetailModal";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const GENRE_COLORS = [
   "#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd",
@@ -19,6 +20,7 @@ const GENRE_COLORS = [
 ];
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,9 +55,9 @@ export default function DashboardPage() {
         {/* ── Hero：全宽 ── */}
         <div className="bg-gradient-to-br from-shelf-500 to-shelf-700 rounded-3xl px-8 py-7 text-white shadow-lg flex items-center justify-between">
           <div>
-            <p className="text-shelf-200 text-sm mb-1">你的书架</p>
+            <p className="text-shelf-200 text-sm mb-1">{t.dashboard.title}</p>
             <p className="text-6xl font-black leading-none mb-1">{stats.total}</p>
-            <p className="text-shelf-100 text-base">本书</p>
+            <p className="text-shelf-100 text-base">{t.dashboard.books}</p>
           </div>
           <div className="flex flex-col gap-2 text-sm text-right">
             <span className="bg-white/20 rounded-full px-4 py-1.5">
@@ -70,9 +72,9 @@ export default function DashboardPage() {
         {/* ── 第一行：环形图（左宽）+ Top 3（右窄）── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* 类型环形图：占 2/3 */}
-          <WidgetCard title="📊 类型分布" className="lg:col-span-2">
+          <WidgetCard title={`📊 ${t.dashboard.genreChart}`} className="lg:col-span-2">
             {stats.genres.length === 0 ? (
-              <p className="text-ink-muted text-sm text-center py-6">暂无数据</p>
+              <p className="text-ink-muted text-sm text-center py-6">{t.dashboard.noData}</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
@@ -186,7 +188,7 @@ export default function DashboardPage() {
           )}
 
           {stats.latest.length > 0 && (
-            <WidgetCard title="🆕 最近入库">
+            <WidgetCard title={`🆕 ${t.dashboard.recentActivity}`}>
               <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
                 {stats.latest.map((book) => (
                   <LatestBookCard key={book.pageId} book={book} onBookClick={setModalPageId} />
