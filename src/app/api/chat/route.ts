@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import Anthropic from "@anthropic-ai/sdk";
 import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
@@ -121,6 +122,14 @@ export async function POST(request: NextRequest) {
   }
 
   const isDemo = session.user.email === "demo@lovely-shelf.com";
+
+  const rl = checkRateLimit(session.user.email!, "chat", 30);
+  if (!rl.allowed) {
+    return new Response(
+      JSON.stringify({ error: "今日对话次数已达上限（30次），请明天再试" }),
+      { status: 429 }
+    );
+  }
 
   const formData    = await request.formData();
   const messagesRaw = formData.get("messages") as string;

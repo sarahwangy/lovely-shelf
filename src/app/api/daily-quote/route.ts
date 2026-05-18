@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import Anthropic from "@anthropic-ai/sdk";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const client = new Anthropic();
 
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
+
+  // demo 用户返回固定语录，不消耗 AI 配额
+  if (session.user.email === "demo@lovely-shelf.com") {
+    return NextResponse.json({
+      zh: "慢下来，感受此刻的美好。",
+      en: "Slow down and feel the beauty of this moment.",
+    });
+  }
+
+  const rl = checkRateLimit(session.user.email!, "daily-quote", 10);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "今日语录生成次数已达上限" }, { status: 429 });
+  }
 
   // 每次随机抽一个风格，让 Claude 定向生成，避免总出同类句子
   const STYLES = [

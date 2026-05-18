@@ -707,3 +707,28 @@
   Demo 模式从"只隔离 chat"扩展到"全链路隔离"的过程中，踩了 React Strict Mode 并发 fetch 覆写数据的坑，解法是 `cancelled` flag + `userSavedRef` 双重保险；demo 用真 AI 识别、只屏蔽 Notion 副作用，是"最小隔离"原则的实践。
 
 ---
+
+### T35 - Rate Limit + Error Boundary
+
+- **学到的核心概念：**
+  - **模块级变量做内存计数**：在 `rate-limit.ts` 里用 `const store = new Map()` 存每个用户的请求计数，同一个 Node.js 实例生命周期内持续存在。（行业通用）
+  - **serverless 内存限流的局限**：Vercel 每个请求可能跑在不同函数实例上，各自有独立的 `store`，同一个用户的请求分散到不同实例时每个计数从 0 开始，真正可靠的限流需要 Redis（如 Vercel KV）。这版实现是"够用但不完美"。（行业通用）
+  - **Next.js Error Boundary = `error.tsx` 文件**：在页面目录放一个 `error.tsx`，该目录页面崩溃时框架自动渲染它，不需要手动 import 或调用——文件名本身就是约定，必须加 `"use client"`。（行业通用）
+  - **`reset()` vs 刷新页面**：`error.tsx` 里 Next.js 注入的 `reset` 函数只重新渲染出错的组件，不刷新整个浏览器，比 `window.location.reload()` 快，也不丢失其他状态。（行业通用）
+  - **demo 用户也要限流**：demo 账号上传图片走真实 Claude Sonnet 识别，同样消耗 API 配额，不能因为"不写 Notion"就豁免限流。判断是否限流的标准是"是否消耗付费资源"，不是"是否写数据库"。（这个项目特有）
+
+- **用到的关键 API/函数：**
+  - `Map<string, { count, resetAt }>` — 用 `"邮箱:操作"` 做 key，存计数和过期时间戳
+  - `Date.now()` — 获取毫秒时间戳，和 `resetAt` 比较判断窗口是否过期
+  - `error.tsx` 的 `reset` prop — Next.js 注入，调用后重新尝试渲染出错的页面段
+  - `useEffect(() => console.error(error), [error])` — 把错误打到 Vercel 日志的标准写法
+
+- **容易踩的坑：**
+  - **serverless 内存不跨实例**：Vercel 并发时多个实例各有独立内存，同一用户的请求可能永远触发不了计数上限。这版实现在低流量下够用，高流量要换 Redis
+  - **`error.tsx` vs `global-error.tsx`**：`src/app/error.tsx` 捕获根 layout 下方的路由段错误；真正全局兜底要用 `global-error.tsx`，且必须包含 `<html><body>` 标签
+  - **误以为 demo 不消耗 AI 配额**：demo 模式跳过的是 Notion 写入，AI 识别（Sonnet）仍然真实调用，仍然计费——这是这次 code review 里差点犯的错
+
+- **一句话总结：**
+  Rate Limit 用内存 Map 轻量保护 API 配额（够用但 serverless 不可靠），Error Boundary 靠 `error.tsx` 文件名约定自动接住崩溃，两者都是"框架约定优于手动调用"的 Next.js 设计哲学体现。
+
+---

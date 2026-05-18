@@ -4,6 +4,7 @@ import { preprocessImage } from "@/lib/image";
 import { recognizeBook } from "@/lib/ai";
 import { uploadFileToNotion, createBookPage, findDuplicateBook, countBooksByGenre, listBooksByGenre } from "@/lib/notion";
 import { getDemoBooksForGenre } from "@/lib/demo-data";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { BookSummary } from "@/types/book";
 import type { BookInfo } from "@/types/book";
 
@@ -25,6 +26,14 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
+  }
+
+  const rl = checkRateLimit(session.user.email!, "upload", 10);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { success: false, error: `今日上传次数已达上限（10次），请明天再试` },
+      { status: 429 }
+    );
   }
 
   const reqStart = Date.now();
