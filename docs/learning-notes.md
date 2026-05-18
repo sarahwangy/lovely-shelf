@@ -679,3 +679,31 @@
 
 - **一句话总结：**
   Demo 模式 = 在工具执行层插一个分支，用假数据短路真实 API 调用；核心技巧是把 `isDemo` 放进 context 对象一路传下去，而不是在每个调用点单独判断。
+
+---
+
+### T34 - Demo 模式完整落地：全路由隔离 + 并发竞态 bug
+
+- **学到的核心概念：**
+  - **全路由 Demo 隔离**：demo 用户的判断放在每个 API route 的最入口，命中就走"假数据分支"提前返回，真实的 Notion/AI 写入代码完全不触碰。这和 T33 的"只隔离 chat Agent"不同——扩展到了 `/api/process`、`/api/books`、`/api/quotes` 所有端点。（这个项目特有）
+  - **Demo 用真 AI 识别、不用假 Notion**：`/api/process` 和 `/api/agent` 让 demo 用户跑完整的 `recognizeBook`（真实 Claude 识别），只跳过"重复检查 + 上传封面 + 创建 Notion 页面"。体验更真实，只有"产生副作用"的步骤被屏蔽。（这个项目特有）
+  - **React Strict Mode 双重执行**：开发环境下 React 18 的 Strict Mode 会把每个 `useEffect` 执行两次（mount → unmount → mount），导致两个并发 fetch 互相竞争。后到的响应可能覆盖用户刚刚保存的数据。（行业通用）
+  - **`cancelled` flag + `userSavedRef` 防竞态**：cleanup 函数里把 `cancelled = true`，fetch 回来时先判断 `if (cancelled || userSavedRef.current) return`——两道保险，第一道防 Strict Mode 双重 fetch，第二道防"用户已存数据被慢到的 GET 覆写"。（行业通用）
+  - **唯一 ID 保证"插入"而不是"更新"**：手动语录每次保存返回 `pageId: demo-manual-${Date.now()}`，而不是固定字符串。前端 `handleQuoteSaved` 检测到 pageId 不存在 → 走头部插入分支；固定 ID 会被误判为"更新已有条目"，新语录反而不显示。（这个项目特有）
+  - **SSR Session 注水防闪烁**：layout.tsx（server component）里调 `auth()` 拿到 session，通过 `initialSession` prop 传给 `SessionProvider`，客户端首次渲染就有 session，不出现"未登录→已登录"的一帧闪烁。（行业通用）
+
+- **用到的关键 API/函数：**
+  - `useRef(false)` 作为 `userSavedRef`：跨渲染周期持久存"用户是否已操作"标志，不触发重渲染
+  - `let cancelled = false; return () => { cancelled = true; }` — `useEffect` cleanup 的标准竞态防护写法
+  - `Date.now()` 作 ID 后缀：简单可靠的客户端唯一 ID 生成，demo 场景够用
+  - `<SessionProvider session={initialSession}>` — next-auth 的服务端注水模式，避免 hydration 闪烁
+
+- **容易踩的坑：**
+  - **React Strict Mode 只在开发环境生效**：production build 不会双重执行，所以这个 bug 只在本地可以复现，容易被忽视，但并发竞态本身是真实存在的风险
+  - **Demo pageId 固定 → 走"更新"分支**：最初 demo 手动语录的 pageId 是固定的 `"demo-manual"`，前端每次存后用 `map` 替换而不是插入，新语录不显示在列表里，也不出现在"手写"tab——改成 `Date.now()` 后立刻修复
+  - **Demo AI 识别不 mock 但 Notion 写入要 mock**：在 `runBookAgent` 里，识别步骤走真实 Claude，工具执行层的 `check_duplicate` / `create_notion_page` 才走 demo 分支——隔离层要选在"执行"阶段，不能选在"解析"阶段
+
+- **一句话总结：**
+  Demo 模式从"只隔离 chat"扩展到"全链路隔离"的过程中，踩了 React Strict Mode 并发 fetch 覆写数据的坑，解法是 `cancelled` flag + `userSavedRef` 双重保险；demo 用真 AI 识别、只屏蔽 Notion 副作用，是"最小隔离"原则的实践。
+
+---

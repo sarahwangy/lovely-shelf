@@ -290,7 +290,6 @@ let _demoRecognizeIdx = 0;
 // Demo 模式的书单（用于 list_books_by_genre）
 const DEMO_GENRE_BOOKS = [
   { title: "活着",       author: "余华",           genres: ["小说"],       quotes: ["人是为了活着本身而活着。"] },
-  { title: "挪威的森林", author: "村上春树",       genres: ["小说"],       quotes: ["死并非生的对立面。"] },
   { title: "小王子",     author: "圣·埃克苏佩里", genres: ["小说"],       quotes: ["真正重要的东西用眼睛看不见。"] },
   { title: "百年孤独",   author: "加西亚·马尔克斯", genres: ["小说"],     quotes: ["过去都是假的。"] },
   { title: "人间失格",   author: "太宰治",         genres: ["小说"],       quotes: ["我的不幸恰恰在于我缺乏拒绝的能力。"] },
