@@ -28,10 +28,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(session.user.email!, "upload", 10);
+  const isDemo = session.user.email === "demo@lovely-shelf.com";
+  const uploadLimit = isDemo ? 10 : 20;
+  const rl = checkRateLimit(session.user.email!, "upload", uploadLimit);
   if (!rl.allowed) {
     return NextResponse.json(
-      { success: false, error: `今日上传次数已达上限（10次），请明天再试` },
+      { success: false, error: `今日上传次数已达上限（${uploadLimit}次），请明天再试` },
       { status: 429 }
     );
   }
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Demo 模式：AI 识别完就返回，不碰 Notion 任何数据
-    if (session.user.email === "demo@lovely-shelf.com") {
+    if (isDemo) {
       const primaryGenre = bookInfo.genres[0] ?? "小说";
       log("total", "ok", Date.now() - reqStart, "demo shortcut");
       return NextResponse.json({

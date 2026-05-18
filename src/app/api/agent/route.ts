@@ -20,10 +20,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "未登录" }, { status: 401 });
   }
 
-  const rl = checkRateLimit(session.user.email!, "upload", 10);
+  const isDemo = session.user.email === "demo@lovely-shelf.com";
+  const uploadLimit = isDemo ? 10 : 20;
+  const rl = checkRateLimit(session.user.email!, "upload", uploadLimit);
   if (!rl.allowed) {
     return NextResponse.json(
-      { success: false, error: `今日上传次数已达上限（10次），请明天再试` },
+      { success: false, error: `今日上传次数已达上限（${uploadLimit}次），请明天再试` },
       { status: 429 }
     );
   }
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     log("preprocess", "ok", Date.now() - t, filename);
 
     // Demo 模式：AI 识别真实书封面，但跳过所有 Notion 操作
-    if (session.user.email === "demo@lovely-shelf.com") {
+    if (isDemo) {
       t = Date.now();
       const bookInfo = await recognizeBook(base64);
       log("recognize", "ok", Date.now() - t, bookInfo.title);
