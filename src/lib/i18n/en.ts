@@ -88,13 +88,23 @@ const en: Translations = {
 
   // Common
   common: {
-    loading:   "Loading…",
-    retry:     "Reload",
-    error:     "Something went wrong",
-    errorHint: "Don't worry, your bookshelf data is safe.",
-    author:    "Author",
-    genre:     "Genre",
-    unknown:   "Unknown",
+    loading:     "Loading…",
+    retry:       "Reload",
+    error:       "Something went wrong",
+    errorHint:   "Don't worry, your bookshelf data is safe.",
+    author:      "Author",
+    genre:       "Genre",
+    unknown:     "Unknown",
+    save:        "Save",
+    saving:      "Saving…",
+    cancel:      "Cancel",
+    edit:        "Edit",
+    bookDetail:  "Book Detail",
+    description: "Description",
+    country:     "Country",
+    genreLabel:  "Genres",
+    subtitleOpt: "Subtitle (optional)",
+    openInNotion:"Open in Notion ↗",
   },
 };
 

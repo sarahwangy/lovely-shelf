@@ -86,13 +86,23 @@ const zh = {
 
   // 通用
   common: {
-    loading:  "加载中…",
-    retry:    "重新加载",
-    error:    "出了点问题",
-    errorHint: "别担心，你的书架数据都在。",
-    author:   "作者",
-    genre:    "类型",
-    unknown:  "未知",
+    loading:     "加载中…",
+    retry:       "重新加载",
+    error:       "出了点问题",
+    errorHint:   "别担心，你的书架数据都在。",
+    author:      "作者",
+    genre:       "类型",
+    unknown:     "未知",
+    save:        "保存",
+    saving:      "保存中…",
+    cancel:      "取消",
+    edit:        "编辑",
+    bookDetail:  "书籍详情",
+    description: "简介",
+    country:     "国家",
+    genreLabel:  "类型标签",
+    subtitleOpt: "副标题（选填）",
+    openInNotion:"在 Notion 中打开 ↗",
   },
 };
 

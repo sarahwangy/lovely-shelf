@@ -5,6 +5,7 @@ import type { QuoteBook } from "@/app/api/quotes/route";
 import type { ImageResult } from "@/app/api/images/route";
 import type { VideoResult } from "@/app/api/videos/route";
 import type { MusicResult } from "@/app/api/music/route";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── 背景预设 ──────────────────────────────────────────────────────
 
@@ -154,6 +155,8 @@ export default function QuoteStudio({
   onTextChanged?:    (newText: string) => void; // 样式编辑模式下文字被修改后的回调
   onClose:           () => void;
 }) {
+  const { t } = useLanguage();
+
   // ── 卡片内容 ──────────────────────────────────────────────────────
   const [text,      setText]      = useState(initialText);
   const [bookTitle, setBookTitle] = useState(initialBookTitle);
@@ -578,7 +581,7 @@ export default function QuoteStudio({
     } finally { setSaving(false); }
   }
 
-  const saveLabel = saving ? "保存中…" : bookTitle.trim() ? "💾 保存到 Notion" : "✨ 添加到语录";
+  const saveLabel = saving ? t.common.saving : bookTitle.trim() ? `💾 ${t.common.save}` : `✨ ${t.quotes.addQuote}`;
 
   return (
     <>
