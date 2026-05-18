@@ -164,16 +164,22 @@ export async function POST(request: Request) {
   if (!text?.trim()) return NextResponse.json({ error: "语句不能为空" }, { status: 400 });
 
   // Demo 模式：不写 Notion，直接返回假 QuoteBook
+  // 每次都用新的 pageId（而非替换 demo-manual），这样 handleQuoteSaved 会走
+  // "不存在 → 头部插入"分支，保证新语录始终排在列表第一位，
+  // 且"手写"tab 的 bookTitle 过滤也能正常命中。
   if (session.user.email === DEMO_EMAIL) {
-    const manual = DEMO_BOOKS.find((b) => b.pageId === "demo-manual")!;
     if (!bookTitle?.trim()) {
-      // 追加到手动语录（前端会用返回的 book 替换本地的那一条）
+      // 无书名 → 手动语录
       return NextResponse.json({
-        book: { ...manual, quotes: [...manual.quotes, text.trim()],
-          musicUrl: musicUrl?.trim() || null, videoUrl: videoUrl?.trim() || null },
+        book: {
+          pageId: `demo-manual-${Date.now()}`, notionUrl: "#",
+          bookTitle: "手动语录", author: "",
+          coverUrl: null, quotes: [text.trim()],
+          musicUrl: musicUrl?.trim() || null, videoUrl: videoUrl?.trim() || null,
+        } satisfies QuoteBook,
       });
     }
-    // 新书语录
+    // 有书名 → 新书语录
     return NextResponse.json({
       book: {
         pageId: `demo-q-${Date.now()}`, notionUrl: "#",
