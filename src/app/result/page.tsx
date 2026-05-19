@@ -7,12 +7,13 @@ import type { ProcessResult } from "@/app/upload/page";
 import type { BookSummary } from "@/types/book";
 import BookDetailModal from "@/components/BookDetailModal";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ResultPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [results, setResults] = useState<ProcessResult[]>([]);
   const [loaded, setLoaded] = useState(false);
-  // 当前打开 modal 的书籍 pageId，null = 关闭
   const [modalPageId, setModalPageId] = useState<string | null>(null);
 
   // useEffect 在组件挂载后才跑，确保在浏览器端读 localStorage
@@ -34,12 +35,12 @@ export default function ResultPage() {
     return (
       <div className="min-h-screen bg-shelf-50 flex flex-col items-center justify-center gap-4 px-4">
         <span className="text-5xl">📭</span>
-        <p className="text-ink-muted text-sm">没有找到识别结果</p>
+        <p className="text-ink-muted text-sm">{t.result.noResults}</p>
         <button
           onClick={() => router.push("/upload")}
           className="bg-shelf-500 hover:bg-shelf-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
         >
-          去上传图片
+          {t.result.goUpload}
         </button>
       </div>
     );
@@ -54,17 +55,17 @@ export default function ResultPage() {
         <div className="bg-white border-b border-stone-100 px-5 py-2.5 flex items-center justify-center gap-3 text-xs">
           {successCount > 0 && (
             <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
-              ✓ {successCount} 张入库
+              ✓ {t.result.addedBadge(successCount)}
             </span>
           )}
           {duplicateCount > 0 && (
             <span className="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-medium">
-              ⚠ {duplicateCount} 张重复
+              ⚠ {t.result.duplicateBadge(duplicateCount)}
             </span>
           )}
           {errorCount > 0 && (
             <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full font-medium">
-              ✕ {errorCount} 张失败
+              ✕ {t.result.errorBadge(errorCount)}
             </span>
           )}
         </div>
@@ -74,9 +75,9 @@ export default function ResultPage() {
         {/* 标题区 */}
         {loaded ? (
           <div className="text-center mb-6">
-            <h1 className="text-xl font-bold text-ink mb-1">识别完成</h1>
+            <h1 className="text-xl font-bold text-ink mb-1">{t.result.doneTitle}</h1>
             <p className="text-ink-muted text-sm">
-              共 {results.length} 张，已自动写入 Notion 书库
+              {t.result.savedToNotion(results.length)}
             </p>
           </div>
         ) : (
@@ -100,10 +101,10 @@ export default function ResultPage() {
             onClick={() => router.push("/upload")}
             className="w-full bg-shelf-500 hover:bg-shelf-600 active:bg-shelf-700 text-white font-semibold py-4 rounded-2xl transition-colors shadow-md text-base"
           >
-            + 继续上传更多
+            + {t.result.uploadMore}
           </button>
           <p className="text-center text-xs text-ink-light">
-            结果已保存到 Notion，关闭页面不会丢失
+            {t.result.safeClosed}
           </p>
         </div>
       </main>
@@ -126,6 +127,7 @@ function BookCard({
   result: ProcessResult;
   onBookClick: (pageId: string) => void;
 }) {
+  const { t } = useLanguage();
   const { filename, previewUrl, status, bookInfo, pageUrl, error, stats } = result;
 
   if (status === "error") {
@@ -136,7 +138,7 @@ function BookCard({
         </div>
         <div className="flex-1 min-w-0 py-1">
           <p className="text-sm font-medium text-ink truncate">{filename}</p>
-          <p className="text-xs text-red-500 mt-1 line-clamp-3">{error ?? "识别失败"}</p>
+          <p className="text-xs text-red-500 mt-1 line-clamp-3">{error ?? t.result.failed}</p>
         </div>
       </div>
     );
@@ -151,7 +153,7 @@ function BookCard({
         <div className="flex-1 min-w-0 py-1">
           <p className="text-sm font-medium text-ink truncate">{bookInfo?.title ?? filename}</p>
           <p className="text-xs text-ink-muted mt-0.5">{bookInfo?.author}</p>
-          <p className="text-xs text-amber-600 mt-1.5 font-medium">已在书库中，跳过入库</p>
+          <p className="text-xs text-amber-600 mt-1.5 font-medium">{t.result.duplicateLabel}</p>
           {pageUrl && (
             <a
               href={pageUrl}
@@ -160,7 +162,7 @@ function BookCard({
               className="inline-flex items-center gap-1.5 text-xs text-shelf-600 hover:text-shelf-700 mt-2 py-1"
             >
               <span className="w-4 h-4 bg-shelf-100 rounded flex items-center justify-center text-[10px] shrink-0">N</span>
-              查看已有记录 →
+              {t.result.viewExisting}
             </a>
           )}
         </div>
@@ -231,7 +233,7 @@ function BookCard({
             className="inline-flex items-center gap-2 text-sm font-medium text-shelf-600 hover:text-shelf-700 active:text-shelf-800 transition-colors py-2"
           >
             <span className="w-5 h-5 bg-shelf-100 rounded flex items-center justify-center text-xs shrink-0">N</span>
-            在 Notion 中查看
+            {t.result.viewNotion}
             <span className="text-shelf-400">→</span>
           </a>
         )}
@@ -242,10 +244,10 @@ function BookCard({
             <span className="text-xl shrink-0">
               {stats.countInGenre === 1 ? "🎊" : "🎉"}
             </span>
-            <p className="text-white text-sm leading-snug">
+            <p className="text-white text-sm leading-snug font-semibold">
               {stats.countInGenre === 1
-                ? <>这是你书库里第一本 <span className="font-bold">{stats.primaryGenre}</span> 类的书！</>
-                : <>这是你第 <span className="font-bold text-base">{stats.countInGenre}</span> 本 <span className="font-bold">{stats.primaryGenre}</span> 类的书～</>
+                ? t.result.firstOfGenre(stats.primaryGenre)
+                : t.result.nthOfGenre(stats.countInGenre, stats.primaryGenre)
               }
             </p>
           </div>
@@ -274,10 +276,11 @@ function RecommendationRow({
   books: BookSummary[];
   onBookClick: (pageId: string) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="mt-4 -mx-4 px-4">
       <p className="text-xs font-medium text-ink-muted mb-2.5">
-        📚 你的{genre}书架
+        📚 {t.result.genreShelf(genre)}
       </p>
       {/* overflow-x-auto 横向滚动，scrollbar-hide 隐藏滚动条 */}
       <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>

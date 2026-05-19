@@ -199,7 +199,7 @@ export default function Home() {
       // （后端 Vercel 环境的 sharp 也没有 HEVC codec，发过去也会报同样的错）
       const name = item.file.name.toLowerCase();
       if (name.endsWith(".heic") || name.endsWith(".heif") || item.file.type === "image/heic" || item.file.type === "image/heif") {
-        const msg = "HEIC 转换失败。请在 iPhone「设置 → 相机 → 格式」选「兼容性最佳」后重新拍照上传 JPG";
+        const msg = t.upload.heicError;
         updateItem(item.id, { status: "error", error: msg });
         collectedResults[resultIndex] = { filename: item.file.name, previewUrl: item.previewUrl, status: "error", error: msg };
         completedCount += 1;
@@ -247,12 +247,12 @@ export default function Home() {
           };
         }
       } catch {
-        updateItem(item.id, { status: "error", error: "网络错误，请重试" });
+        updateItem(item.id, { status: "error", error: t.upload.networkError });
         collectedResults[resultIndex] = {
           filename: item.file.name,
           previewUrl: item.previewUrl,
           status: "error",
-          error: "网络错误，请重试",
+          error: t.upload.networkError,
         };
       }
       // 完成一张就更新计数，多个并发任务各自触发，互不干扰
@@ -298,8 +298,8 @@ export default function Home() {
               ⏳
             </div>
             <div>
-              <p className="text-sm font-medium text-ink">正在处理 HEIC…</p>
-              <p className="text-xs text-ink-muted">iPhone 原图转换中，通常需要 1-2 秒</p>
+              <p className="text-sm font-medium text-ink">{t.upload.heicProcessing}</p>
+              <p className="text-xs text-ink-muted">{t.upload.heicHint}</p>
             </div>
           </div>
         )}
@@ -333,13 +333,13 @@ export default function Home() {
           <>
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-ink">
-                已选 <span className="text-shelf-600">{items.length}</span> 张
+                {t.upload.selected(items.length)}
               </span>
               <button
                 onClick={() => setItems([])}
                 className="text-xs text-ink-muted hover:text-red-500 transition-colors"
               >
-                🗑 清空
+                🗑 {t.upload.clear}
               </button>
             </div>
 
@@ -376,7 +376,7 @@ export default function Home() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <span className="text-shelf-400 text-4xl leading-none mb-1">+</span>
-                <span className="text-xs text-shelf-400">继续添加</span>
+                <span className="text-xs text-shelf-400">{t.upload.addMore}</span>
               </div>
             </div>
 
@@ -385,9 +385,9 @@ export default function Home() {
               onClick={handleProcess}
               className="w-full bg-shelf-500 hover:bg-shelf-600 active:bg-shelf-700 text-white font-semibold py-4 rounded-2xl transition-colors shadow-md text-base"
             >
-              ✨ 开始识别（{items.length} 张）
+              {t.upload.scanBtn(items.length)}
             </button>
-            <p className="text-center text-xs text-ink-light mt-3">识别完成后可预览并修改，再决定是否写入 Notion</p>
+            <p className="text-center text-xs text-ink-light mt-3">{t.upload.scanHint}</p>
           </>
         )}
 
@@ -401,12 +401,11 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="font-semibold text-ink text-sm">
-                    已完成 {currentIndex} / {items.length} 张
+                    {t.upload.completed(currentIndex, items.length)}
                   </p>
-                  {/* 并发时显示"正在处理 N 张"，串行时显示具体文件名 */}
                   <p className="text-xs text-ink-muted">
                     {items.filter(i => i.status === "processing").length > 1
-                      ? `同时处理 ${items.filter(i => i.status === "processing").length} 张中…`
+                      ? t.upload.batchProcessing(items.filter(i => i.status === "processing").length)
                       : items.find(i => i.status === "processing")?.file.name}
                   </p>
                 </div>
