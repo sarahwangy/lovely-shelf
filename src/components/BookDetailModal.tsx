@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import type { BookDetail, BookInfo } from "@/types/book";
 import { GENRE_LABELS, COUNTRY_OPTIONS } from "@/lib/notion-fields";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Props = {
   pageId: string | null;   // null = modal 关闭
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
+  const { t } = useLanguage();
   const [book, setBook] = useState<BookDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -97,7 +99,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
         {/* 顶部把手（手机样式） + 关闭按钮 */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
           <div className="w-10 h-1 bg-stone-200 rounded-full sm:hidden mx-auto absolute left-1/2 -translate-x-1/2 top-3" />
-          <span className="text-sm font-medium text-ink-muted">书籍详情</span>
+          <span className="text-sm font-medium text-ink-muted">{t.common.bookDetail}</span>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-100 hover:bg-stone-200 text-ink-muted text-lg leading-none transition-colors"
@@ -159,7 +161,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
                   {(editing ? (draft.subtitle ?? book.subtitle) : book.subtitle) !== null || editing ? (
                     editing ? (
                       <input
-                        placeholder="副标题（选填）"
+                        placeholder={t.common.subtitleOpt}
                         className="w-full text-xs text-ink-muted border-b border-stone-200 outline-none bg-transparent pb-0.5"
                         value={draft.subtitle ?? book.subtitle ?? ""}
                         onChange={(e) => setDraft((d) => ({ ...d, subtitle: e.target.value || null }))}
@@ -185,13 +187,13 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
                 {editing ? (
                   // 国家选择器
                   <div>
-                    <label className="text-xs text-ink-light mb-1 block">国家</label>
+                    <label className="text-xs text-ink-light mb-1 block">{t.common.country}</label>
                     <select
                       className="text-xs border border-stone-200 rounded-lg px-2 py-1.5 bg-white text-ink w-full"
                       value={draft.country ?? book.country ?? ""}
                       onChange={(e) => setDraft((d) => ({ ...d, country: (e.target.value || null) as BookDetail["country"] }))}
                     >
-                      <option value="">未知</option>
+                      <option value="">{t.common.unknown}</option>
                       {COUNTRY_OPTIONS.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
@@ -208,7 +210,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
                 {editing ? (
                   // 类型多选（checkbox 列表）
                   <div>
-                    <label className="text-xs text-ink-light mb-1.5 block">类型标签</label>
+                    <label className="text-xs text-ink-light mb-1.5 block">{t.common.genreLabel}</label>
                     <div className="flex flex-wrap gap-1.5">
                       {GENRE_LABELS.map((g) => {
                         const selected = (draft.genres ?? book.genres).includes(g);
@@ -250,7 +252,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
 
               {/* 简介 */}
               <div>
-                <label className="text-xs text-ink-light mb-1 block">简介</label>
+                <label className="text-xs text-ink-light mb-1 block">{t.common.description}</label>
                 {editing ? (
                   <textarea
                     rows={4}
@@ -276,7 +278,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
               rel="noopener noreferrer"
               className="text-xs text-ink-light hover:text-ink-muted transition-colors"
             >
-              在 Notion 中打开 ↗
+              {t.common.openInNotion}
             </a>
 
             {/* 右：编辑 / 保存 / 取消 */}
@@ -287,14 +289,14 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
                     onClick={() => { setEditing(false); setDraft({}); setError(null); }}
                     className="text-sm text-ink-muted px-4 py-1.5 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors"
                   >
-                    取消
+                    {t.common.cancel}
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
                     className="text-sm text-white bg-shelf-500 hover:bg-shelf-600 disabled:opacity-50 px-4 py-1.5 rounded-full transition-colors"
                   >
-                    {saving ? "保存中…" : "保存"}
+                    {saving ? t.common.saving : t.common.save}
                   </button>
                 </>
               ) : (
@@ -302,7 +304,7 @@ export default function BookDetailModal({ pageId, onClose, onUpdated }: Props) {
                   onClick={() => setEditing(true)}
                   className="text-sm text-shelf-600 hover:text-shelf-700 px-4 py-1.5 rounded-full border border-shelf-200 hover:bg-shelf-50 transition-colors"
                 >
-                  ✏️ 编辑
+                  ✏️ {t.common.edit}
                 </button>
               )}
             </div>

@@ -732,3 +732,33 @@
   Rate Limit 用内存 Map 轻量保护 API 配额（够用但 serverless 不可靠），Error Boundary 靠 `error.tsx` 文件名约定自动接住崩溃，两者都是"框架约定优于手动调用"的 Next.js 设计哲学体现。
 
 ---
+
+### T36 - 中英文双语切换（i18n）完整落地
+
+- **学到的核心概念：**
+  - **React Context 做全局状态**：`createContext` + `useContext` + 自定义 Hook `useLanguage()`，把当前语言和翻译对象注入到任意子组件，不用逐层 props 传递。（行业通用）
+  - **TypeScript 类型推导锁定翻译结构**：`zh.ts` 不用 `as const`，直接 `export type Translations = typeof zh`，`en.ts` 实现同一类型——类型系统会报错提醒你漏填翻译 key。（行业通用）
+  - **SSR 安全的 localStorage 读取**：`useState(() => typeof window === "undefined" ? "zh" : localStorage.getItem(...) ?? "zh")` ——初始化函数在服务端返回默认值，避免 `localStorage is not defined` 报错。（行业通用）
+  - **函数型翻译 key**：计数、年份等动态内容用函数 `(n: number) => string` 存入翻译对象，调用时传参，比拼字符串更灵活也更类型安全。（这个项目特有）
+  - **AI 系统提示语言切换**：`/api/chat` 接收前端传来的 `lang` 字段，根据它构建不同语言的 system prompt，Claude 就会用对应语言回复——不需要改模型，改 prompt 就够了。（行业通用）
+  - **客户端翻译映射表**：Notion 里的数据（类型名"励志"、国家名"澳大利亚"）以中文存储，英文模式下用一个 `termMap.ts` 字典做展示层翻译，保持数据库不动、只改显示。（这个项目特有）
+  - **固定宽度防止布局抖动**：切换语言时"中/EN"、导航按钮、退出按钮的文字长度不同，用 `w-10`、`w-20`、`w-24` 固定宽度让布局稳定，不随文字宽度变化。（行业通用）
+
+- **用到的关键 API/函数：**
+  - `createContext<T | null>(null)` — 创建 Context，泛型保证拿到的值有类型
+  - `useContext(LanguageContext)` — 在任意子组件里读取 Context 值
+  - `localStorage.setItem / getItem` — 浏览器持久化用户的语言偏好
+  - `formData.append("lang", lang)` — 把语言偏好随请求一起发给后端 API
+  - `translateTerm(name, "genre" | "country", lang)` — 展示层翻译，未命中则原样返回
+
+- **容易踩的坑：**
+  - **`as const` 破坏类型兼容**：`zh.ts` 加了 `as const` 后每个字符串都变成字面量类型（如 `"上传"`），`en.ts` 的 `"Upload"` 就无法赋值给它，去掉 `as const` 才能让两个文件共享同一个类型。
+  - **`|| ""` 判断空字符串的陷阱**：英文版 `dashboard.books: ""` 是空字符串（不需要"本"这个量词），用 `||` 会把它当 falsy 跳到备用值，要直接用 `{t.dashboard.books}` 不加 `||`。
+  - **用户消息文本意外注入代码**：`LanguageContext.tsx` 第 26 行出现了一段对话文字被拼进了字符串比较里（`lang === "zh用户的问题文字..."`），导致 TypeScript 报错——提醒要注意编辑器/AI 工具的自动补全不要污染代码。
+  - **子组件需要各自调用 `useLanguage()`**：同一文件里的 `WordCloud`、`HeatmapRow`、`QuoteCard` 等子组件都是独立函数，不会继承父组件的 `t`，每个需要翻译的子组件都要自己调一次 Hook。
+  - **导航 genre 用原始中文 key**：dashboard 展示时把"励志"翻成"Self-Help"，但点击跳转用的是 `entry.name`（原始中文），因为后端按中文查 Notion；如果不小心把 `displayName` 传给 `router.push`，跳转后就找不到数据了。
+
+- **一句话总结：**
+  用 React Context + TypeScript 类型推导搭建双语切换框架，覆盖全部页面 UI 文字、AI 聊天回复语言、以及 Notion 数据的展示层翻译，做到切换语言时界面不抖动、数据不丢失。
+
+---

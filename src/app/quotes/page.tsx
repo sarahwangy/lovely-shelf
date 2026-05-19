@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import NavBar from "@/components/NavBar";
 import type { QuoteBook } from "@/app/api/quotes/route";
 import type { CardStyle } from "./QuoteStudio";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // QuoteStudio 依赖 DOM API，必须关闭 SSR
 const QuoteStudio = dynamic(() => import("./QuoteStudio"), { ssr: false });
@@ -96,6 +97,7 @@ type StudioTarget = {
 const QUOTES_PAGE_SIZE = 10;
 
 export default function QuotesPage() {
+  const { t } = useLanguage();
   const [books,      setBooks]      = useState<QuoteBook[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
@@ -210,10 +212,10 @@ export default function QuotesPage() {
   );
 
   const TABS: { key: typeof tab; label: string; icon: string }[] = [
-    { key: "all",    label: "全部",    icon: "📖" },
-    { key: "manual", label: "手写",    icon: "✍️" },
-    { key: "notion", label: "书库语录", icon: "📚" },
-    { key: "liked",  label: "已收藏",  icon: "❤️" },
+    { key: "all",    label: t.quotes.tabAll,         icon: "📖" },
+    { key: "manual", label: t.quotes.tabHandwritten, icon: "✍️" },
+    { key: "notion", label: t.quotes.tabBooks,       icon: "📚" },
+    { key: "liked",  label: t.quotes.tabFavorites,   icon: "❤️" },
   ];
 
   return (
@@ -224,11 +226,11 @@ export default function QuotesPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-ink mb-1">语录</h1>
+              <h1 className="text-2xl font-bold text-ink mb-1">{t.quotes.title}</h1>
               <p className="text-sm text-ink-muted leading-relaxed">
-                这里是你治愈心灵、平静内心的小天地
+                {t.quotes.subtitle}
                 <span className="mx-1.5">·</span>
-                {tab === "all" ? `共 ${allQuotes.length} 句` : `${filteredQuotes.length} / ${allQuotes.length} 句`}
+                {tab === "all" ? t.quotes.countAll(allQuotes.length) : t.quotes.countFiltered(filteredQuotes.length, allQuotes.length)}
               </p>
             </div>
 
@@ -241,7 +243,7 @@ export default function QuotesPage() {
                     onClick={() => setShowExport((v) => !v)}
                     className="h-9 px-3 rounded-xl border border-stone-200 text-sm text-ink-muted hover:text-ink hover:border-stone-300 transition-colors flex items-center gap-1"
                   >
-                    ⬇ 导出全部
+                    ⬇ {t.quotes.exportAll}
                     <span className="text-[10px] text-stone-400">{showExport ? "▲" : "▼"}</span>
                   </button>
                   {showExport && (
@@ -299,13 +301,13 @@ export default function QuotesPage() {
           </div>
         )}
 
-        {loading && <div className="text-center py-20 text-ink-muted">加载中…</div>}
+        {loading && <div className="text-center py-20 text-ink-muted">{t.common.loading}</div>}
         {error   && <div className="text-center py-20 text-red-400">{error}</div>}
 
         {!loading && !error && allQuotes.length === 0 && (
           <div className="text-center py-20 text-ink-muted">
             <p className="text-4xl mb-3">✨</p>
-            <p>还没有语录，去上传第一本书，或点击右上角 + 手动添加</p>
+            <p>{t.quotes.noQuotes}</p>
           </div>
         )}
 
@@ -315,9 +317,9 @@ export default function QuotesPage() {
               {tab === "manual" ? "✍️" : tab === "liked" ? "🤍" : "📚"}
             </p>
             <p className="text-sm">
-              {tab === "manual" ? "还没有手写语录，点击 + 手动添加" :
-               tab === "liked"  ? "还没有收藏，点击语录卡上的心形收藏" :
-                                  "还没有书库语录，去上传书籍后会自动同步"}
+              {tab === "manual" ? t.quotes.tabEmptyManual :
+               tab === "liked"  ? t.quotes.tabEmptyLiked :
+                                  t.quotes.tabEmptyBooks}
             </p>
           </div>
         )}
@@ -406,6 +408,7 @@ function QuoteCard({
   onToggle:   () => void;
   onMakeCard: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 flex gap-4 relative">
       {book.coverUrl ? (
@@ -429,7 +432,7 @@ function QuoteCard({
               <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current shrink-0">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              已收藏
+              {t.quotes.likedBadge}
             </span>
           )}
           <a href={book.notionUrl} target="_blank" rel="noopener noreferrer"
@@ -441,13 +444,13 @@ function QuoteCard({
             {book.musicUrl && (
               <a href={book.musicUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
-                🎵 音乐
+                🎵 {t.quotes.music}
               </a>
             )}
             {book.videoUrl && (
               <a href={book.videoUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-shelf-600 transition-colors">
-                🎬 视频
+                🎬 {t.quotes.video}
               </a>
             )}
           </div>
@@ -462,7 +465,7 @@ function QuoteCard({
             🎨
           </button>
           <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-ink text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            制作语录卡
+            {t.quotes.makeCard}
           </span>
         </div>
 

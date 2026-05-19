@@ -2,20 +2,22 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-
-// 导航项配置：href 用来判断哪个是当前页
-const NAV_ITEMS = [
-  { href: "/upload",    icon: "📤", label: "上传" },
-  { href: "/dashboard", icon: "📊", label: "书架" },
-  { href: "/chat",      icon: "💬", label: "聊天" },
-  { href: "/quotes",    icon: "✨", label: "语录" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function NavBar() {
   const pathname = usePathname();
   const router   = useRouter();
   const { data: session } = useSession();
 
+  const { lang, t, toggle } = useLanguage();
+
+  // NAV_ITEMS 放在组件内，这样 label 能响应语言切换
+  const NAV_ITEMS = [
+    { href: "/upload",    icon: "📤", label: t.nav.upload },
+    { href: "/dashboard", icon: "📊", label: t.nav.dashboard },
+    { href: "/chat",      icon: "💬", label: t.nav.chat },
+    { href: "/quotes",    icon: "✨", label: t.nav.quotes },
+  ];
   const isDemo     = session?.user?.email === "demo@lovely-shelf.com";
   const firstName  = session?.user?.name?.split(" ")[0] ?? "";
 
@@ -47,7 +49,7 @@ export default function NavBar() {
                 key={href}
                 type="button"
                 onClick={() => router.push(href)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+                className={`flex items-center justify-center gap-1.5 w-20 py-2 rounded-xl text-sm font-medium transition-colors ${
                   active
                     ? "bg-shelf-100 text-shelf-700"
                     : "text-ink-muted hover:bg-stone-100 hover:text-ink"
@@ -69,6 +71,15 @@ export default function NavBar() {
             </span>
           )}
 
+          {/* 语言切换 */}
+          <button
+            type="button"
+            onClick={toggle}
+            className="flex items-center justify-center w-10 h-9 rounded-xl text-sm font-medium text-ink-muted hover:bg-stone-100 hover:text-ink transition-colors border border-stone-200"
+          >
+            {lang === "zh" ? "EN" : "中"}
+          </button>
+
           {/* 退出登录 */}
           <button
             type="button"
@@ -76,10 +87,10 @@ export default function NavBar() {
               localStorage.removeItem("lovely-shelf-results");
               signOut({ callbackUrl: "/login" });
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium text-ink-muted hover:bg-red-50 hover:text-red-500 transition-colors"
+            className="flex items-center justify-center gap-1.5 w-24 py-2 rounded-xl text-sm font-medium text-ink-muted hover:bg-red-50 hover:text-red-500 transition-colors"
           >
             <span className="text-base leading-none">🚪</span>
-            <span className="hidden sm:block">退出</span>
+            <span className="hidden sm:block">{t.nav.signOut}</span>
           </button>
         </div>
       </header>
@@ -88,7 +99,7 @@ export default function NavBar() {
       {isDemo && (
         <div className="bg-amber-400 px-4 py-1.5 flex items-center justify-center gap-2 text-amber-900 text-xs font-medium">
           <span>🎪</span>
-          <span>Demo 模式 · 当前展示的是示例数据，不会读写你的 Notion</span>
+          <span>{t.demo.banner}</span>
         </div>
       )}
     </div>

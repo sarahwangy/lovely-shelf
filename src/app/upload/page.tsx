@@ -6,6 +6,7 @@ import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { BookInfo, BookSummary } from "@/types/book";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // 每张图片在处理过程中的完整状态
 type FileItem = {
@@ -36,6 +37,7 @@ export type ProcessResult = {
 };
 
 export default function Home() {
+  const { t } = useLanguage();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -197,7 +199,7 @@ export default function Home() {
       // （后端 Vercel 环境的 sharp 也没有 HEVC codec，发过去也会报同样的错）
       const name = item.file.name.toLowerCase();
       if (name.endsWith(".heic") || name.endsWith(".heif") || item.file.type === "image/heic" || item.file.type === "image/heif") {
-        const msg = "HEIC 转换失败。请在 iPhone「设置 → 相机 → 格式」选「兼容性最佳」后重新拍照上传 JPG";
+        const msg = t.upload.heicError;
         updateItem(item.id, { status: "error", error: msg });
         collectedResults[resultIndex] = { filename: item.file.name, previewUrl: item.previewUrl, status: "error", error: msg };
         completedCount += 1;
@@ -245,12 +247,12 @@ export default function Home() {
           };
         }
       } catch {
-        updateItem(item.id, { status: "error", error: "网络错误，请重试" });
+        updateItem(item.id, { status: "error", error: t.upload.networkError });
         collectedResults[resultIndex] = {
           filename: item.file.name,
           previewUrl: item.previewUrl,
           status: "error",
-          error: "网络错误，请重试",
+          error: t.upload.networkError,
         };
       }
       // 完成一张就更新计数，多个并发任务各自触发，互不干扰
@@ -285,8 +287,8 @@ export default function Home() {
       <main className="max-w-xl mx-auto px-4 py-10">
         {/* Hero */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-ink mb-2">整理你的书架</h1>
-          <p className="text-ink-muted text-sm">拍一张封面，AI 自动识别并存入 Notion 书库</p>
+          <h1 className="text-2xl font-bold text-ink mb-2">{t.upload.title}</h1>
+          <p className="text-ink-muted text-sm">{t.upload.subtitle}</p>
         </div>
 
         {/* ── HEIC 转换中提示 ── */}
@@ -296,8 +298,8 @@ export default function Home() {
               ⏳
             </div>
             <div>
-              <p className="text-sm font-medium text-ink">正在处理 HEIC…</p>
-              <p className="text-xs text-ink-muted">iPhone 原图转换中，通常需要 1-2 秒</p>
+              <p className="text-sm font-medium text-ink">{t.upload.heicProcessing}</p>
+              <p className="text-xs text-ink-muted">{t.upload.heicHint}</p>
             </div>
           </div>
         )}
@@ -318,10 +320,10 @@ export default function Home() {
             <div className="w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">📷</span>
             </div>
-            <p className="font-semibold text-ink mb-1">拍照或选择图片</p>
-            <p className="text-ink-light text-sm mb-5">支持 JPG · PNG · HEIC，可多选</p>
+            <p className="font-semibold text-ink mb-1">{t.upload.dragHint}</p>
+            <p className="text-ink-light text-sm mb-5">{t.upload.supportHint}</p>
             <span className="inline-flex items-center gap-2 bg-shelf-500 hover:bg-shelf-600 text-white text-sm font-medium px-5 py-2.5 rounded-full transition-colors shadow-sm">
-              + 选择图片
+              {t.upload.selectBtn}
             </span>
           </div>
         )}
@@ -331,13 +333,13 @@ export default function Home() {
           <>
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-ink">
-                已选 <span className="text-shelf-600">{items.length}</span> 张
+                {t.upload.selected(items.length)}
               </span>
               <button
                 onClick={() => setItems([])}
                 className="text-xs text-ink-muted hover:text-red-500 transition-colors"
               >
-                🗑 清空
+                🗑 {t.upload.clear}
               </button>
             </div>
 
@@ -374,7 +376,7 @@ export default function Home() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <span className="text-shelf-400 text-4xl leading-none mb-1">+</span>
-                <span className="text-xs text-shelf-400">继续添加</span>
+                <span className="text-xs text-shelf-400">{t.upload.addMore}</span>
               </div>
             </div>
 
@@ -383,9 +385,9 @@ export default function Home() {
               onClick={handleProcess}
               className="w-full bg-shelf-500 hover:bg-shelf-600 active:bg-shelf-700 text-white font-semibold py-4 rounded-2xl transition-colors shadow-md text-base"
             >
-              ✨ 开始识别（{items.length} 张）
+              {t.upload.scanBtn(items.length)}
             </button>
-            <p className="text-center text-xs text-ink-light mt-3">识别完成后可预览并修改，再决定是否写入 Notion</p>
+            <p className="text-center text-xs text-ink-light mt-3">{t.upload.scanHint}</p>
           </>
         )}
 
@@ -399,12 +401,11 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="font-semibold text-ink text-sm">
-                    已完成 {currentIndex} / {items.length} 张
+                    {t.upload.completed(currentIndex, items.length)}
                   </p>
-                  {/* 并发时显示"正在处理 N 张"，串行时显示具体文件名 */}
                   <p className="text-xs text-ink-muted">
                     {items.filter(i => i.status === "processing").length > 1
-                      ? `同时处理 ${items.filter(i => i.status === "processing").length} 张中…`
+                      ? t.upload.batchProcessing(items.filter(i => i.status === "processing").length)
                       : items.find(i => i.status === "processing")?.file.name}
                   </p>
                 </div>
@@ -437,9 +438,9 @@ export default function Home() {
                   </span>
                   <span className="text-sm text-ink flex-1 truncate">{item.file.name}</span>
                   <span className="text-xs font-medium text-ink-muted">
-                    {item.status === "success" ? "完成" :
-                     item.status === "error" ? "失败" :
-                     item.status === "processing" ? "识别中…" : "等待"}
+                    {item.status === "success" ? t.upload.done :
+                     item.status === "error" ? t.upload.failed :
+                     item.status === "processing" ? t.upload.processing : t.upload.waiting}
                   </span>
                 </div>
               ))}

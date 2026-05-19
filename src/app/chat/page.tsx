@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import NavBar from "@/components/NavBar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── 类型定义 ─────────────────────────────────────────────────────
 
@@ -28,15 +29,8 @@ type ApiMessage = {
 
 // ── 常量 ─────────────────────────────────────────────────────────
 
-const TOOL_LABELS: Record<string, string> = {
-  recognize_book_from_image: "识别封面",
-  check_duplicate_in_notion: "查重",
-  upload_cover_to_notion:    "上传封面",
-  create_notion_page:        "写入书库",
-  list_books_by_genre:       "查询书架",
-};
 
-const HINTS = [
+const HINTS_ZH = [
   "给我看看我的励志书",
   "给我看看我的回忆录",
   "书架里有哪些心理相关的书？",
@@ -45,6 +39,17 @@ const HINTS = [
   "展示书架里的优美语句",
   "我有哪些旅行类书籍？",
   "帮我入库一本书",
+];
+
+const HINTS_EN = [
+  "Show me my self-help books",
+  "Show me my memoirs",
+  "What psychology books are on my shelf?",
+  "Show me my children's books",
+  "Show me my history books",
+  "Share some beautiful quotes from my shelf",
+  "What travel books do I have?",
+  "Help me add a book",
 ];
 
 // 初始种子语录（页面加载时立即显示，不消耗 API）
@@ -115,6 +120,7 @@ function HeartbeatWidget() {
 
 // 随机正能量语录卡：初始显示种子语录，点"换一句"调 Claude API 动态生成
 function QuoteWidget() {
+  const { t, lang } = useLanguage();
   const [quote, setQuote] = useState(
     () => SEED_QUOTES[Math.floor(Math.random() * SEED_QUOTES.length)]
   );
@@ -127,7 +133,7 @@ function QuoteWidget() {
     try {
       const res  = await fetch("/api/daily-quote");
       const data = (await res.json()) as { zh?: string; en?: string; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? "生成失败");
+      if (!res.ok || data.error) throw new Error(data.error ?? t.common.error);
       setQuote({ zh: data.zh!, en: data.en! });
     } catch (e) {
       setError((e as Error).message);
@@ -147,8 +153,7 @@ function QuoteWidget() {
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-ink leading-relaxed mb-1">{quote.zh}</p>
-          <p className="text-xs text-ink-muted leading-relaxed italic">{quote.en}</p>
+          <p className="text-sm font-medium text-ink leading-relaxed mb-1">{lang === "zh" ? quote.zh : quote.en}</p>
         </div>
       )}
 
@@ -169,7 +174,7 @@ function QuoteWidget() {
           <polyline points="23 4 23 10 17 10"/>
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
         </svg>
-        {loading ? "生成中…" : "换一句"}
+        {loading ? t.chat.quoteLoading : t.chat.quoteRefresh}
       </button>
     </div>
   );
@@ -178,14 +183,14 @@ function QuoteWidget() {
 // 左侧边栏：打招呼 + 心电图 + 语录
 function ChatSidebar() {
   const { data: session } = useSession();
-  const firstName = session?.user?.name?.split(" ")[0] ?? "朋友";
+  const { t } = useLanguage();
+  const firstName = session?.user?.name?.split(" ")[0] ?? t.chat.friend;
   const greeting  = getGreeting();
 
   return (
     <aside className="hidden md:flex flex-col w-72 shrink-0 border-r border-stone-100 bg-white p-6 gap-7 overflow-y-auto">
-      {/* 打招呼 */}
       <div>
-        <p className="text-xs text-ink-muted mb-2 font-medium">👋 你好！</p>
+        <p className="text-xs text-ink-muted mb-2 font-medium">👋 {t.chat.greetingHi}</p>
         <h2 className="text-2xl font-bold text-ink leading-tight">{greeting},</h2>
         <h2 className="text-2xl font-bold text-shelf-500 leading-tight">{firstName}</h2>
       </div>
@@ -202,12 +207,14 @@ function ChatSidebar() {
 // ── 聊天子组件 ───────────────────────────────────────────────────
 
 function ToolChip({ tool }: { tool: ToolEvent }) {
+  const { t } = useLanguage();
+  const labels = t.chat.toolLabels as Record<string, string>;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${
       tool.done ? "bg-green-100 text-green-700" : "bg-amber-50 text-amber-700 animate-pulse"
     }`}>
       {tool.done ? "✓" : "…"}
-      {TOOL_LABELS[tool.name] ?? tool.name}
+      {labels[tool.name] ?? tool.name}
     </span>
   );
 }
@@ -301,19 +308,19 @@ function MessageBubble({ msg }: { msg: DisplayMessage }) {
 }
 
 function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
+  const { lang, t } = useLanguage();
+  const hints = lang === "zh" ? HINTS_ZH : HINTS_EN;
   return (
     <div className="flex flex-col items-center justify-center h-full gap-5 px-6 text-center">
       <div className="w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center">
         <span className="text-3xl">📚</span>
       </div>
       <div>
-        <p className="text-xl font-bold text-ink mb-1.5">和书架 AI 聊聊</p>
-        <p className="text-sm text-ink-muted leading-relaxed">
-          上传书封面自动入库，或直接问我关于书架的问题
-        </p>
+        <p className="text-xl font-bold text-ink mb-1.5">{t.chat.emptyTitle}</p>
+        <p className="text-sm text-ink-muted leading-relaxed">{t.chat.emptyDesc}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2 mt-1 max-w-sm">
-        {HINTS.map((hint) => (
+        {hints.map((hint) => (
           <button key={hint} type="button" onClick={() => onSelect(hint)}
             className="text-sm px-3.5 py-1.5 bg-shelf-100 text-shelf-700 rounded-full hover:bg-shelf-200 transition-colors">
             {hint}
@@ -327,6 +334,7 @@ function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
 // ── 主页面 ───────────────────────────────────────────────────────
 
 export default function ChatPage() {
+  const { t, lang } = useLanguage();
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [apiMessages, setApiMessages]         = useState<ApiMessage[]>([]);
   const [input, setInput]                     = useState("");
@@ -434,7 +442,7 @@ export default function ChatPage() {
     clearImage();
 
     const userDisplay: DisplayMessage  = { role: "user", content: text, imagePreview: sentPreview ?? undefined };
-    const userApiMsg:  ApiMessage       = { role: "user", content: text || "请处理这张书封面" };
+    const userApiMsg:  ApiMessage       = { role: "user", content: text || t.upload.processImageMsg };
     const nextApiMessages               = [...apiMessages, userApiMsg];
     const assistantDisplay: DisplayMessage = { role: "assistant", content: "", toolEvents: [], streaming: true };
 
@@ -443,6 +451,7 @@ export default function ChatPage() {
 
     const fd = new FormData();
     fd.append("messages", JSON.stringify(nextApiMessages));
+    fd.append("lang", lang);
     if (sentImage) fd.append("image", sentImage);
 
     try {
@@ -486,17 +495,17 @@ export default function ChatPage() {
               updateLastAssistant((prev) => ({ ...prev, streaming: false }));
               break;
             case "error":
-              updateLastAssistant((prev) => ({ ...prev, content: `出错了：${data.message as string}`, streaming: false }));
+              updateLastAssistant((prev) => ({ ...prev, content: t.common.error, streaming: false }));
               break;
           }
         }
       }
-    } catch (err) {
-      updateLastAssistant((prev) => ({ ...prev, content: `网络错误：${(err as Error).message}`, streaming: false }));
+    } catch {
+      updateLastAssistant((prev) => ({ ...prev, content: t.common.error, streaming: false }));
     } finally {
       setIsStreaming(false);
     }
-  }, [input, imageFile, imagePreview, apiMessages, isStreaming, updateLastAssistant]);
+  }, [input, imageFile, imagePreview, apiMessages, isStreaming, updateLastAssistant, lang, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -539,7 +548,7 @@ export default function ChatPage() {
                     {converting ? (
                       <div className="h-full w-full flex flex-col items-center justify-center gap-1">
                         <span className="text-base animate-spin">⏳</span>
-                        <span className="text-[9px] text-ink-muted">转换中</span>
+                        <span className="text-[9px] text-ink-muted">{t.chat.converting}</span>
                       </div>
                     ) : imagePreview && !imageLoadError ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -570,13 +579,13 @@ export default function ChatPage() {
                     </svg>
                   </button>
                   <div className="absolute -top-1 left-full ml-1.5 bg-stone-800 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
-                    上传图片
+                    {t.chat.imageUpload}
                   </div>
                 </div>
 
                 {/* 文字输入框 */}
                 <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown} placeholder="和 AI 聊聊你的书架…" disabled={isStreaming} rows={1}
+                  onKeyDown={handleKeyDown} placeholder={t.chat.placeholder} disabled={isStreaming} rows={1}
                   className="flex-1 resize-none bg-shelf-50 border border-stone-200 rounded-2xl px-4 py-2.5 text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors disabled:opacity-50" />
 
                 {/* 发送按钮 */}

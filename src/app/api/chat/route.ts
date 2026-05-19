@@ -20,7 +20,35 @@ function encodeSSE(data: object, encoder: TextEncoder): Uint8Array {
   return encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-const SYSTEM = `你是 Lovely Shelf 的 AI 书架助手，帮用户管理他们的 Notion 书库。
+function buildSystem(lang: string) {
+  const isEn = lang === "en";
+  return isEn
+    ? `You are Lovely Shelf's AI assistant, helping users manage their Notion book library.
+
+You can:
+1. Identify book covers from uploaded photos and add them to the library
+2. Search the shelf for books by genre and share beautiful quotes from them
+3. Answer questions about the shelf
+
+When an image is attached, follow this order:
+1. recognize_book_from_image — identify the cover
+2. check_duplicate_in_notion — check for duplicates (use the identified title and author)
+3. If already exists: inform the user, stop
+4. If not duplicate: upload_cover_to_notion → create_notion_page
+5. Report the result (title, genre, Notion link)
+6. After successful save, mention how many quotes are in the book and ask "Want to see them on the Quotes page?" with link [Go to Quotes](/quotes)
+
+Note: genre names in the Notion database are stored in Chinese. When calling list_books_by_genre, always pass the Chinese genre name (e.g. "励志" for self-help, "心理相关" for psychology).
+
+Reply in English. Keep the tone warm and friendly.
+
+Formatting rules (strictly follow):
+- No Markdown tables (| --- |)
+- No code blocks (\`\`\`)
+- Use **bold** to highlight titles or keywords
+- Use [link text](url) format for links
+- Use plain line breaks and numbered lists`
+    : `你是 Lovely Shelf 的 AI 书架助手，帮用户管理他们的 Notion 书库。
 
 你可以：
 1. 识别用户上传的书封面，将书籍入库
@@ -43,6 +71,7 @@ const SYSTEM = `你是 Lovely Shelf 的 AI 书架助手，帮用户管理他们�
 - 可以用 **粗体** 强调书名或关键词
 - 可以用 [链接文字](url) 格式插入链接
 - 用普通换行和数字列表组织内容`;
+}
 
 // 聊天 Agent 的工具集：比 T23 多了 list_books_by_genre（用于回答"给我看看我的 XX 类书"）
 const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
@@ -133,6 +162,7 @@ export async function POST(request: NextRequest) {
 
   const formData    = await request.formData();
   const messagesRaw = formData.get("messages") as string;
+  const lang        = (formData.get("lang") as string | null) ?? "zh";
   const imageFile   = formData.get("image") as File | null;
 
   // 对话历史：前端每次把完整历史发过来，API 才能理解上下文
@@ -192,7 +222,7 @@ export async function POST(request: NextRequest) {
           const msgStream = client.messages.stream({
             model:    "claude-sonnet-4-6",
             max_tokens: 4096,
-            system:   SYSTEM,
+            system:   buildSystem(lang),
             tools:    CHAT_TOOLS,
             messages: currentMessages,
           });

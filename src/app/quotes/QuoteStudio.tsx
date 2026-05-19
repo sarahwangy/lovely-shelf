@@ -5,6 +5,7 @@ import type { QuoteBook } from "@/app/api/quotes/route";
 import type { ImageResult } from "@/app/api/images/route";
 import type { VideoResult } from "@/app/api/videos/route";
 import type { MusicResult } from "@/app/api/music/route";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── 背景预设 ──────────────────────────────────────────────────────
 
@@ -154,6 +155,8 @@ export default function QuoteStudio({
   onTextChanged?:    (newText: string) => void; // 样式编辑模式下文字被修改后的回调
   onClose:           () => void;
 }) {
+  const { t, lang } = useLanguage();
+
   // ── 卡片内容 ──────────────────────────────────────────────────────
   const [text,      setText]      = useState(initialText);
   const [bookTitle, setBookTitle] = useState(initialBookTitle);
@@ -272,11 +275,11 @@ export default function QuoteStudio({
     if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
     if (!SpeechAPI) return;
     const r = new SpeechAPI();
-    r.lang = "zh-CN"; r.continuous = true; r.interimResults = false;
+    r.lang = lang === "en" ? "en-US" : "zh-CN"; r.continuous = true; r.interimResults = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     r.onresult = (e: any) => {
-      const t = e.results[e.results.length - 1][0].transcript;
-      setText((prev) => prev ? prev + " " + t : t);
+      const transcript = e.results[e.results.length - 1][0].transcript;
+      setText((prev) => prev ? prev + " " + transcript : transcript);
     };
     r.onend = () => setListening(false);
     r.onerror = () => setListening(false);
@@ -305,11 +308,11 @@ export default function QuoteStudio({
     try {
       const res  = await fetch(`/api/images?q=${encodeURIComponent(imgQuery)}&source=${imgSource}`);
       const data = (await res.json()) as { images?: ImageResult[]; error?: string };
-      if (!res.ok || data.error) { setImgSearchError(data.error ?? "搜索失败，请重试"); return; }
+      if (!res.ok || data.error) { setImgSearchError(data.error ?? t.quoteStudio.searchFailed); return; }
       const imgs = data.images ?? [];
       setImgResults(imgs);
-      if (imgs.length === 0) setImgSearchError("没有找到图片，换英文关键词试试");
-    } catch { setImgSearchError("网络错误，请重试"); }
+      if (imgs.length === 0) setImgSearchError(t.quoteStudio.imgSearchError);
+    } catch { setImgSearchError(t.upload.networkError); }
     finally { setImgSearching(false); }
   }
 
@@ -330,11 +333,11 @@ export default function QuoteStudio({
     try {
       const res  = await fetch(`/api/videos?q=${encodeURIComponent(vidQuery)}&source=${vidSource}`);
       const data = (await res.json()) as { videos?: VideoResult[]; error?: string };
-      if (!res.ok || data.error) { setVidSearchErr(data.error ?? "搜索失败"); return; }
+      if (!res.ok || data.error) { setVidSearchErr(data.error ?? t.quoteStudio.searchFailed); return; }
       const vids = data.videos ?? [];
       setVidResults(vids);
-      if (vids.length === 0) setVidSearchErr("没有找到视频，换英文关键词试试");
-    } catch { setVidSearchErr("网络错误，请重试"); }
+      if (vids.length === 0) setVidSearchErr(t.quoteStudio.vidSearchError);
+    } catch { setVidSearchErr(t.upload.networkError); }
     finally { setVidSearching(false); }
   }
 
@@ -350,11 +353,11 @@ export default function QuoteStudio({
     try {
       const res  = await fetch(`/api/music?q=${encodeURIComponent(musQuery)}`);
       const data = (await res.json()) as { music?: MusicResult[]; error?: string };
-      if (!res.ok || data.error) { setMusSearchErr(data.error ?? "搜索失败"); return; }
+      if (!res.ok || data.error) { setMusSearchErr(data.error ?? t.quoteStudio.searchFailed); return; }
       const tracks = data.music ?? [];
       setMusResults(tracks);
-      if (tracks.length === 0) setMusSearchErr("没有找到，换英文关键词试试（如 calm、piano）");
-    } catch { setMusSearchErr("网络错误，请重试"); }
+      if (tracks.length === 0) setMusSearchErr(t.quoteStudio.musSearchError);
+    } catch { setMusSearchErr(t.upload.networkError); }
     finally { setMusSearching(false); }
   }
 
@@ -513,7 +516,7 @@ export default function QuoteStudio({
       // 语句（自动换行）：使用用户选择的字体
       const canvasFont = FONT_OPTIONS.find((f) => f.css === fontFamily)?.canvas ?? "system-ui";
       ctx.font = `600 ${fontPx[fontSize]}px ${canvasFont}`;
-      const lines = wrapCanvasText(ctx, text || "在这里输入你的语句…", W - padX * 2);
+      const lines = wrapCanvasText(ctx, text || t.quoteStudio.cardPlaceholder, W - padX * 2);
       const lh    = fontPx[fontSize] * 1.5;
       for (const line of lines) { ctx.fillText(line, xPos, y); y += lh; }
 
@@ -571,14 +574,14 @@ export default function QuoteStudio({
       if (videoUrl.trim())  fd.append("videoUrl", videoUrl.trim());
       const res  = await fetch("/api/quotes", { method: "POST", body: fd });
       const data = (await res.json()) as { book?: QuoteBook; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? "保存失败");
+      if (!res.ok || data.error) throw new Error(data.error ?? t.quoteStudio.saveFailed);
       onSaved(data.book!);
     } catch (e) {
       setSaveError((e as Error).message);
     } finally { setSaving(false); }
   }
 
-  const saveLabel = saving ? "保存中…" : bookTitle.trim() ? "💾 保存到 Notion" : "✨ 添加到语录";
+  const saveLabel = saving ? t.common.saving : bookTitle.trim() ? `💾 ${t.common.save}` : `✨ ${t.quotes.addQuote}`;
 
   return (
     <>
@@ -598,7 +601,7 @@ export default function QuoteStudio({
 
           {/* 标题栏 */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 shrink-0">
-            <h2 className="font-semibold text-ink text-lg">语录卡制作</h2>
+            <h2 className="font-semibold text-ink text-lg">{t.quoteStudio.title}</h2>
             <button type="button" onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:bg-stone-100 transition-colors">
               ✕
@@ -645,7 +648,7 @@ export default function QuoteStudio({
                 <div className={`relative z-10 px-5 w-full flex flex-col gap-2 ${itemsClass} ${paddingClass}`}>
                   <p className={`leading-relaxed font-medium w-full ${FONT_SIZE_CLASS[fontSize]} ${textAlignClass}`}
                     style={{ color: textColor, textShadow, fontFamily }}>
-                    {text || "在这里输入你的语句…"}
+                    {text || t.quoteStudio.cardPlaceholder}
                   </p>
                   {bookTitle && (
                     <p className={`text-xs w-full ${textAlignClass}`}
@@ -666,7 +669,7 @@ export default function QuoteStudio({
                     <rect x="9" y="2" width="6" height="11" rx="3" />
                     <path d="M5 10a7 7 0 0 0 14 0" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="8" y1="22" x2="16" y2="22" />
                   </svg>
-                  {listening ? "录音中，点击停止" : "语音输入"}
+                  {listening ? t.quoteStudio.voiceListening : t.quoteStudio.voiceInput}
                 </button>
               )}
 
@@ -687,13 +690,13 @@ export default function QuoteStudio({
                   )}
                   <button type="button" onClick={handleExportVideo} disabled={recording}
                     className="w-full py-2.5 rounded-xl text-sm font-medium bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-300 text-white transition-colors">
-                    {recording ? `录制中 ${recordDuration}s…` : "🎬 录制 MP4"}
+                    {recording ? t.quoteStudio.recording(recordDuration) : t.quoteStudio.recordMP4}
                   </button>
                 </div>
               ) : (
                 <button type="button" onClick={handleExport} disabled={exporting}
                   className="w-full py-2.5 rounded-xl text-sm font-medium bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-300 text-white transition-colors">
-                  {exporting ? "导出中…" : "⬇ 导出 PNG"}
+                  {exporting ? t.quoteStudio.exporting : t.quoteStudio.exportPNG}
                 </button>
               )}
 
@@ -702,7 +705,7 @@ export default function QuoteStudio({
                 <div className="w-full flex gap-2">
                   <button type="button" onClick={onClose}
                     className="flex-1 py-2 rounded-xl text-sm font-medium bg-stone-100 text-ink-muted hover:bg-stone-200 transition-colors">
-                    取消
+                    {t.common.cancel}
                   </button>
                   <button type="button" onClick={() => {
                     saveStyle();
@@ -711,7 +714,7 @@ export default function QuoteStudio({
                     onClose();
                   }}
                     className="flex-1 py-2 rounded-xl text-sm font-medium bg-ink hover:bg-ink/80 text-white transition-colors">
-                    保存样式
+                    {t.quoteStudio.saveStyle}
                   </button>
                 </div>
               )}
@@ -722,11 +725,11 @@ export default function QuoteStudio({
 
               {/* 语句内容 */}
               <div>
-                <label className="text-xs font-medium text-ink-muted mb-1.5 block">语句内容</label>
+                <label className="text-xs font-medium text-ink-muted mb-1.5 block">{t.quoteStudio.quoteLabel}</label>
                 <textarea
                   ref={textareaRef}
                   value={text} onChange={(e) => setText(e.target.value)}
-                  placeholder="输入或粘贴你的语句…点击下方 Emoji 可插入" rows={4}
+                  placeholder={t.quoteStudio.quotePlaceholder} rows={4}
                   className="w-full resize-none bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors leading-relaxed"
                 />
               </div>
@@ -734,23 +737,23 @@ export default function QuoteStudio({
               {/* 来源书名 + 作者 */}
               <div className="flex gap-3">
                 <input value={bookTitle} onChange={(e) => setBookTitle(e.target.value)}
-                  placeholder="来源书名（不填则仅本地展示）"
+                  placeholder={t.quoteStudio.bookPlaceholder}
                   className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors" />
                 <input value={author} onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="作者（选填）"
+                  placeholder={t.quoteStudio.authorPlaceholder}
                   className="w-28 bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors" />
               </div>
 
               {/* ── 卡片背景 ── */}
               <div>
-                <p className="text-xs font-medium text-ink-muted mb-2">卡片背景</p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.bgSection}</p>
                 <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-3">
-                  {(["color", "gradient", "image", "video"] as BgType[]).map((t) => (
-                    <button key={t} type="button" onClick={() => switchBgType(t)}
+                  {(["color", "gradient", "image", "video"] as BgType[]).map((bgT) => (
+                    <button key={bgT} type="button" onClick={() => switchBgType(bgT)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        bgType === t ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
+                        bgType === bgT ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
                       }`}>
-                      {t === "color" ? "纯色" : t === "gradient" ? "渐变" : t === "image" ? "图片" : "🎬 动态"}
+                      {bgT === "color" ? t.quoteStudio.bgColor : bgT === "gradient" ? t.quoteStudio.bgGradient : bgT === "image" ? t.quoteStudio.bgImage : t.quoteStudio.bgVideo}
                     </button>
                   ))}
                 </div>
@@ -785,7 +788,7 @@ export default function QuoteStudio({
                     {(bgValue || converting) && (
                       <div className="relative">
                         {converting ? (
-                          <div className="w-full h-20 bg-stone-100 rounded-xl flex items-center justify-center text-ink-muted text-sm">转换中…</div>
+                          <div className="w-full h-20 bg-stone-100 rounded-xl flex items-center justify-center text-ink-muted text-sm">{t.quoteStudio.converting}</div>
                         ) : bgValue ? (
                           <>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -799,17 +802,17 @@ export default function QuoteStudio({
                     )}
                     <button type="button" onClick={() => fileInputRef.current?.click()}
                       className="w-full py-2 rounded-xl border-2 border-dashed border-stone-300 text-sm text-ink-muted hover:border-shelf-400 hover:text-shelf-600 transition-colors">
-                      📁 本地上传（支持 JPG / PNG / GIF / HEIC）
+                      {t.quoteStudio.localUpload}
                     </button>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLocalUpload} />
-                    <p className="text-xs text-stone-400">Pixabay 图库 · 英文关键词效果更佳</p>
+                    <p className="text-xs text-stone-400">{t.quoteStudio.pixabayHint}</p>
                     <form onSubmit={handleImgSearch} className="flex gap-2">
                       <input value={imgQuery} onChange={(e) => setImgQuery(e.target.value)}
-                        placeholder="搜索图片，如 ocean、forest…"
+                        placeholder={t.quoteStudio.searchImgPlaceholder}
                         className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
                       <button type="submit" disabled={imgSearching}
                         className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                        {imgSearching ? "…" : "搜"}
+                        {imgSearching ? "…" : t.quoteStudio.searchBtn}
                       </button>
                     </form>
                     {imgSearchError && <p className="text-xs text-red-500">{imgSearchError}</p>}
@@ -832,7 +835,7 @@ export default function QuoteStudio({
                 {/* 动态视频背景 */}
                 {bgType === "video" && (
                   <div className="space-y-3">
-                    <p className="text-xs text-ink-muted">预览里是动态效果，导出 PNG 会截取当前帧</p>
+                    <p className="text-xs text-ink-muted">{t.quoteStudio.videoHint}</p>
                     {videoSrc && (
                       <div className="relative">
                         <video src={videoSrc} autoPlay loop muted playsInline
@@ -841,14 +844,14 @@ export default function QuoteStudio({
                           className="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full text-xs flex items-center justify-center hover:bg-black/70 transition-colors">✕</button>
                       </div>
                     )}
-                    <p className="text-xs text-stone-400">Pixabay 视频库 · 搜英文关键词效果更佳</p>
+                    <p className="text-xs text-stone-400">{t.quoteStudio.pixabayVideoHint}</p>
                     <form onSubmit={handleVidSearch} className="flex gap-2">
                       <input value={vidQuery} onChange={(e) => setVidQuery(e.target.value)}
-                        placeholder="搜索视频，如 ocean wave、night sky…"
+                        placeholder={t.quoteStudio.searchVidPlaceholder}
                         className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
                       <button type="submit" disabled={vidSearching}
                         className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                        {vidSearching ? "…" : "搜"}
+                        {vidSearching ? "…" : t.quoteStudio.searchBtn}
                       </button>
                     </form>
                     {vidSearchErr && <p className="text-xs text-red-500">{vidSearchErr}</p>}
@@ -872,8 +875,8 @@ export default function QuoteStudio({
                     {/* ── 录制配乐（Pixabay 音乐库）── */}
                     <div className="pt-3 border-t border-stone-200">
                       <p className="text-xs font-medium text-ink-muted mb-2">
-                        🎵 录制配乐
-                        <span className="font-normal text-stone-400 ml-1">（选填，MP4 里会有音乐）</span>
+                        {t.quoteStudio.recMusicLabel}
+                        <span className="font-normal text-stone-400 ml-1">{t.quoteStudio.recMusicHint}</span>
                       </p>
 
                       {/* 已选音乐提示条 */}
@@ -888,11 +891,11 @@ export default function QuoteStudio({
 
                       <form onSubmit={handleMusicSearch} className="flex gap-2">
                         <input value={musQuery} onChange={(e) => setMusQuery(e.target.value)}
-                          placeholder="搜音乐，如 calm、piano、lofi…"
+                          placeholder={t.quoteStudio.searchMusPlaceholder}
                           className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
                         <button type="submit" disabled={musSearching}
                           className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                          {musSearching ? "…" : "搜"}
+                          {musSearching ? "…" : t.quoteStudio.searchBtn}
                         </button>
                       </form>
                       {musSearchErr && <p className="text-xs text-red-500 mt-1">{musSearchErr}</p>}
@@ -924,7 +927,7 @@ export default function QuoteStudio({
                                   </p>
                                 </div>
                                 {recMusicUrl === m.previewUrl && (
-                                  <span className="text-shelf-600 text-[10px] font-medium shrink-0">✓ 已选</span>
+                                  <span className="text-shelf-600 text-[10px] font-medium shrink-0">{t.quoteStudio.selected}</span>
                                 )}
                               </div>
                             );
@@ -938,7 +941,7 @@ export default function QuoteStudio({
 
               {/* ── 文字颜色 ── */}
               <div className="pt-3 border-t border-stone-100">
-                <p className="text-xs font-medium text-ink-muted mb-2">文字颜色</p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.textColorLabel}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   {TEXT_COLOR_PRESETS.map((c) => (
                     <button key={c.value} type="button" onClick={() => setTextColor(c.value)} title={c.label}
@@ -949,21 +952,21 @@ export default function QuoteStudio({
                   <label className="flex items-center gap-1.5 cursor-pointer ml-1">
                     <input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)}
                       className="w-7 h-7 rounded-full cursor-pointer border-2 border-stone-300 p-0.5 bg-transparent" />
-                    <span className="text-xs text-ink-muted">自定义</span>
+                    <span className="text-xs text-ink-muted">{t.quoteStudio.customColor}</span>
                   </label>
                 </div>
               </div>
 
               {/* ── 字体大小 ── */}
               <div className="pt-3 border-t border-stone-100">
-                <p className="text-xs font-medium text-ink-muted mb-2">字体大小</p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.fontSizeLabel}</p>
                 <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
                   {(Object.keys(FONT_SIZE_LABEL) as FontSize[]).map((size) => (
                     <button key={size} type="button" onClick={() => setFontSize(size)}
                       className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         fontSize === size ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
                       }`}>
-                      {FONT_SIZE_LABEL[size]}
+                      {t.quoteStudio.fontSizes[size]}
                     </button>
                   ))}
                 </div>
@@ -971,7 +974,7 @@ export default function QuoteStudio({
 
               {/* ── 字体类型 ── */}
               <div className="pt-3 border-t border-stone-100">
-                <p className="text-xs font-medium text-ink-muted mb-2">字体类型</p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.fontTypeLabel}</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {FONT_OPTIONS.map((f) => (
                     <button key={f.css} type="button" onClick={() => setFontFamily(f.css)}
@@ -989,10 +992,10 @@ export default function QuoteStudio({
 
               {/* ── 文字位置 ── */}
               <div className="pt-3 border-t border-stone-100">
-                <p className="text-xs font-medium text-ink-muted mb-2">文字位置</p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.textPosLabel}</p>
                 <div className="flex gap-2">
                   <div className="flex gap-1 bg-stone-100 rounded-xl p-1 flex-1">
-                    {([["top", "上"], ["center", "中"], ["bottom", "下"]] as [VPos, string][]).map(([pos, label]) => (
+                    {([["top", t.quoteStudio.posTop], ["center", t.quoteStudio.posMiddle], ["bottom", t.quoteStudio.posBottom]] as [VPos, string][]).map(([pos, label]) => (
                       <button key={pos} type="button" onClick={() => setVPos(pos)}
                         className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                           vPos === pos ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
@@ -1000,7 +1003,7 @@ export default function QuoteStudio({
                     ))}
                   </div>
                   <div className="flex gap-1 bg-stone-100 rounded-xl p-1 flex-1">
-                    {([["left", "左"], ["center", "中"], ["right", "右"]] as [HAlign, string][]).map(([align, label]) => (
+                    {([["left", t.quoteStudio.alignLeft], ["center", t.quoteStudio.alignCenter], ["right", t.quoteStudio.alignRight]] as [HAlign, string][]).map(([align, label]) => (
                       <button key={align} type="button" onClick={() => setHAlign(align)}
                         className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                           hAlign === align ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink"
@@ -1013,7 +1016,7 @@ export default function QuoteStudio({
               {/* ── Emoji 插入 ── */}
               {/* 点击任意 emoji 会插入到语句文字框当前光标位置，可多次点击叠加 */}
               <div className="pt-3 border-t border-stone-100">
-                <p className="text-xs font-medium text-ink-muted mb-2">插入 Emoji <span className="font-normal text-stone-400">（插入到光标位置）</span></p>
+                <p className="text-xs font-medium text-ink-muted mb-2">{t.quoteStudio.insertEmoji} <span className="font-normal text-stone-400">{t.quoteStudio.insertEmojiHint}</span></p>
                 <div className="flex flex-wrap gap-1.5">
                   {CARD_EMOJIS.map((e) => (
                     <button key={e} type="button" onClick={() => insertEmoji(e)}
@@ -1026,7 +1029,7 @@ export default function QuoteStudio({
 
               {/* ── 波浪装饰 ── */}
               <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
-                <p className="text-xs font-medium text-ink-muted">底部波浪装饰</p>
+                <p className="text-xs font-medium text-ink-muted">{t.quoteStudio.waveLabel}</p>
                 <button type="button" onClick={() => setShowWave((v) => !v)}
                   className={`relative w-10 h-6 rounded-full transition-colors ${showWave ? "bg-shelf-500" : "bg-stone-200"}`}>
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${showWave ? "translate-x-4" : "translate-x-0.5"}`} />
@@ -1037,16 +1040,16 @@ export default function QuoteStudio({
               <div className="pt-3 border-t border-stone-100">
                 <button type="button" onClick={() => setShowMedia((v) => !v)}
                   className="flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors">
-                  🎵🎬 配乐 / 视频链接
+                  {t.quoteStudio.mediaLabel}
                   <span className="text-stone-400 text-[10px]">{showMedia ? "▲" : "▼"}</span>
                 </button>
                 {showMedia && (
                   <div className="mt-3 space-y-2">
                     <input value={musicUrl} onChange={(e) => setMusicUrl(e.target.value)}
-                      placeholder="音乐链接（Spotify / 网易云 / Apple Music…）"
+                      placeholder={t.quoteStudio.musicUrlPlaceholder}
                       className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors" />
                     <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="视频链接（YouTube / Bilibili / 抖音…）"
+                      placeholder={t.quoteStudio.videoUrlPlaceholder}
                       className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-shelf-400 focus:bg-white transition-colors" />
                   </div>
                 )}

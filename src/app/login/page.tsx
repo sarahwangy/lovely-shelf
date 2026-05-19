@@ -3,10 +3,12 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function LoginPage() {
   const router = useRouter();
   const [demoLoading, setDemoLoading] = useState(false);
+  const { t } = useLanguage();
 
   async function handleDemo() {
     setDemoLoading(true);
@@ -30,7 +32,7 @@ export default function LoginPage() {
           <span className="text-2xl">📚</span>
         </div>
         <h1 className="text-xl font-bold text-ink mb-1">lovely-shelf</h1>
-        <p className="text-sm text-ink-muted mb-8">把书封面变成书库</p>
+        <p className="text-sm text-ink-muted mb-8">{t.login.subtitle}</p>
 
         {/* Google 登录：真实数据（书架主人专用）*/}
         {/* signIn("google") 会整页跳转到 Google，回来后是完整页面加载，不存在 cookie 竞态 */}
@@ -45,7 +47,7 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          使用 Google 账号登录
+          {t.login.googleBtn}
         </button>
 
         {/* 分隔线 */}
@@ -62,12 +64,10 @@ export default function LoginPage() {
           disabled={demoLoading}
           className="w-full flex items-center justify-center gap-2 bg-shelf-500 hover:bg-shelf-600 disabled:opacity-60 text-white font-medium py-3 px-4 rounded-xl transition-colors"
         >
-          {demoLoading ? "登录中…" : "🎪 一键体验 Demo"}
+          {demoLoading ? t.common.loading : `🎪 ${t.login.demoBtn}`}
         </button>
 
-        <p className="text-xs text-ink-muted mt-3">
-          Demo 模式 · 展示示例数据，无需账号
-        </p>
+        <p className="text-xs text-ink-muted mt-3">{t.login.demoHint}</p>
       </div>
     </div>
   );
