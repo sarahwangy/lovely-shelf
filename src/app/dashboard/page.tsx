@@ -14,13 +14,28 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateTerm } from "@/lib/i18n/termMap";
 import { GENRE_COLORS, BAR_PRIMARY_COLOR, WORD_CLOUD_COLORS } from "@/lib/colors";
 
+const TERM_CACHE_KEY = "lovely-shelf-term-cache";
+
+function loadTermCache(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(TERM_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch { return {}; }
+}
+
+function saveTermCache(cache: Record<string, string>) {
+  try { localStorage.setItem(TERM_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
+}
+
 export default function DashboardPage() {
   const { t, lang } = useLanguage();
   const router = useRouter();
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [modalPageId, setModalPageId] = useState<string | null>(null);
+  const [stats,         setStats]         = useState<StatsData | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+  const [modalPageId,   setModalPageId]   = useState<string | null>(null);
+  // 静态表里没有的词，由 Claude 翻译后存这里
+  const [termOverrides, setTermOverrides] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/stats")
@@ -29,6 +44,50 @@ export default function DashboardPage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // 切换到英文模式且数据已加载时，翻译静态表里没有的词
+  useEffect(() => {
+    if (lang !== "en" || !stats) return;
+
+    const allTerms = [
+      ...stats.genres.map(g => ({ text: g.name, type: "genre" as const })),
+      ...stats.topGenres.map(g => ({ text: g.name, type: "genre" as const })),
+      ...stats.countries.map(c => ({ text: c.name, type: "country" as const })),
+    ];
+
+    // 过滤出静态表里没有的词
+    const unknown = allTerms.filter(
+      ({ text, type }) => !translateTerm(text, type, "en").match(/^[A-Za-z]/)
+    );
+    if (unknown.length === 0) return;
+
+    const cache = loadTermCache();
+    const uncached = unknown.filter(({ text }) => !cache[text]);
+
+    if (uncached.length > 0) {
+      fetch("/api/translate-term", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terms: uncached.map(u => u.text) }),
+      })
+        .then((r) => r.json())
+        .then((data: { translations: Record<string, string> }) => {
+          const merged = { ...cache, ...data.translations };
+          saveTermCache(merged);
+          setTermOverrides(merged);
+        })
+        .catch(() => { /* 翻译失败静默处理，显示中文原文 */ });
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTermOverrides(cache);
+    }
+  }, [lang, stats]);
+
+  // 优先用动态翻译，找不到再用静态表，最后兜底显示原文
+  function tx(name: string, type: "genre" | "country") {
+    if (lang !== "en") return name;
+    return termOverrides[name] ?? translateTerm(name, type, lang);
+  }
 
   if (loading) return <DashboardSkeleton />;
   if (error) return (
@@ -39,22 +98,19 @@ export default function DashboardPage() {
   if (!stats) return null;
 
   const thisYear = new Date().getFullYear();
-  const topGenre = stats.topGenres[0]
-    ? translateTerm(stats.topGenres[0].name, "genre", lang)
-    : "—";
+  const topGenre = stats.topGenres[0] ? tx(stats.topGenres[0].name, "genre") : "—";
 
-  // Translate genre/country display names while keeping original for navigation
   const displayGenres = stats.genres.map(g => ({
     ...g,
-    displayName: translateTerm(g.name, "genre", lang),
+    displayName: tx(g.name, "genre"),
   }));
   const displayTopGenres = stats.topGenres.map(g => ({
     ...g,
-    displayName: translateTerm(g.name, "genre", lang),
+    displayName: tx(g.name, "genre"),
   }));
   const displayCountries = stats.countries.map(c => ({
     ...c,
-    displayName: translateTerm(c.name, "country", lang),
+    displayName: tx(c.name, "country"),
   }));
 
   return (
@@ -146,6 +202,7 @@ export default function DashboardPage() {
             genres={stats.genres}
             countries={stats.countries}
             authors={stats.authors}
+            termOverrides={termOverrides}
           />
         </WidgetCard>
 
@@ -277,17 +334,24 @@ function WordCloud({
   genres,
   countries,
   authors,
+  termOverrides,
 }: {
-  genres:    { name: string; count: number }[];
-  countries: { name: string; count: number }[];
-  authors:   { name: string; count: number }[];
+  genres:        { name: string; count: number }[];
+  countries:     { name: string; count: number }[];
+  authors:       { name: string; count: number }[];
+  termOverrides: Record<string, string>;
 }) {
   const { t, lang } = useLanguage();
   type WordEntry = { name: string; count: number; cat: "genre" | "country" | "author" };
 
+  function tx(name: string, type: "genre" | "country") {
+    if (lang !== "en") return name;
+    return termOverrides[name] ?? translateTerm(name, type, lang);
+  }
+
   const words: WordEntry[] = [
-    ...genres.map(w    => ({ ...w, name: translateTerm(w.name, "genre",   lang), cat: "genre"   as const })),
-    ...countries.map(w => ({ ...w, name: translateTerm(w.name, "country", lang), cat: "country" as const })),
+    ...genres.map(w    => ({ ...w, name: tx(w.name, "genre"),   cat: "genre"   as const })),
+    ...countries.map(w => ({ ...w, name: tx(w.name, "country"), cat: "country" as const })),
     ...authors.map(w   => ({ ...w, cat: "author"  as const })),
   ];
 
