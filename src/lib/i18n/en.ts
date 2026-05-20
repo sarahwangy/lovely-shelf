@@ -165,7 +165,7 @@ const en: Translations = {
     saveStyle:           "Save Style",
     quoteLabel:          "Quote",
     quotePlaceholder:    "Type or paste your quote… click an Emoji below to insert",
-    bookPlaceholder:     "Book title (optional — leave blank for local only)",
+    bookPlaceholder:     "Book title (optional)",
     authorPlaceholder:   "Author (optional)",
     bgSection:           "Card Background",
     bgColor:             "Solid",

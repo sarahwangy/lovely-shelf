@@ -120,7 +120,7 @@ function HeartbeatWidget() {
 
 // 随机正能量语录卡：初始显示种子语录，点"换一句"调 Claude API 动态生成
 function QuoteWidget() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [quote, setQuote] = useState(
     () => SEED_QUOTES[Math.floor(Math.random() * SEED_QUOTES.length)]
   );
@@ -153,7 +153,8 @@ function QuoteWidget() {
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-ink leading-relaxed mb-1">{lang === "zh" ? quote.zh : quote.en}</p>
+          <p className="text-sm font-medium text-ink leading-relaxed">{quote.zh}</p>
+          <p className="text-xs text-ink-muted leading-relaxed mt-1">{quote.en}</p>
         </div>
       )}
 
@@ -309,9 +310,25 @@ function MessageBubble({ msg }: { msg: DisplayMessage }) {
 
 function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
   const { lang, t } = useLanguage();
-  const hints = lang === "zh" ? HINTS_ZH : HINTS_EN;
+  const { data: session } = useSession();
+  const hints     = lang === "zh" ? HINTS_ZH : HINTS_EN;
+  const firstName = session?.user?.name?.split(" ")[0] ?? t.chat.friend;
+  const greeting  = getGreeting();
+
   return (
     <div className="flex flex-col items-center justify-center h-full gap-5 px-6 text-center">
+
+      {/* 手机专属：打招呼 + 语录（桌面端已在左侧边栏显示）*/}
+      <div className="md:hidden w-full max-w-sm bg-white rounded-2xl p-5 shadow-sm border border-stone-100 text-left">
+        <p className="text-xs text-ink-muted mb-1 font-medium">👋 {t.chat.greetingHi}</p>
+        <p className="text-xl font-bold text-ink leading-tight">
+          {greeting}, <span className="text-shelf-500">{firstName}</span>
+        </p>
+        <div className="mt-3 pt-3 border-t border-stone-100">
+          <QuoteWidget />
+        </div>
+      </div>
+
       <div className="w-16 h-16 bg-shelf-100 rounded-full flex items-center justify-center">
         <span className="text-3xl">📚</span>
       </div>
