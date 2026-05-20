@@ -163,7 +163,7 @@ const zh = {
     saveStyle:           "保存样式",
     quoteLabel:          "语句内容",
     quotePlaceholder:    "输入或粘贴你的语句…点击下方 Emoji 可插入",
-    bookPlaceholder:     "来源书名（不填则仅本地展示）",
+    bookPlaceholder:     "来源书名（选填）",
     authorPlaceholder:   "作者（选填）",
     bgSection:           "卡片背景",
     bgColor:             "纯色",

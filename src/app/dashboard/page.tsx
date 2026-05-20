@@ -12,13 +12,7 @@ import BookDetailModal from "@/components/BookDetailModal";
 import NavBar from "@/components/NavBar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateTerm } from "@/lib/i18n/termMap";
-
-const GENRE_COLORS = [
-  "#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd",
-  "#818cf8", "#4f46e5", "#7c3aed", "#9333ea",
-  "#d946ef", "#ec4899", "#f43f5e", "#fb923c",
-  "#facc15", "#4ade80", "#2dd4bf",
-];
+import { GENRE_COLORS, BAR_PRIMARY_COLOR, WORD_CLOUD_COLORS } from "@/lib/colors";
 
 export default function DashboardPage() {
   const { t, lang } = useLanguage();
@@ -167,7 +161,7 @@ export default function DashboardPage() {
                   formatter={(v) => [t.dashboard.booksUnit(Number(v ?? 0))]}
                   contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
                 />
-                <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="count" fill={BAR_PRIMARY_COLOR} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </WidgetCard>
@@ -279,13 +273,6 @@ function LatestBookCard({ book, onBookClick }: { book: BookSummary; onBookClick:
 }
 
 // 词云：把类型、国家、作者名合并为一个词表，字体大小按出现次数缩放
-// 三类词用不同颜色区分，鼠标悬停显示具体数量
-const WORD_CLOUD_COLORS: Record<"genre" | "country" | "author", string[]> = {
-  genre:   ["#6366f1", "#8b5cf6", "#a78bfa", "#7c3aed", "#4f46e5", "#9333ea"],
-  country: ["#059669", "#10b981", "#34d399", "#047857", "#065f46", "#0d9488"],
-  author:  ["#d97706", "#f59e0b", "#fb923c", "#ea580c", "#b45309", "#c2410c"],
-};
-
 function WordCloud({
   genres,
   countries,
