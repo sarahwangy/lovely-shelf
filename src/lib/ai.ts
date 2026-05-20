@@ -1,12 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { BookInfo } from "@/types/book";
+import { anthropic as client } from "@/lib/anthropic";
 
 export type { BookInfo };
-
-// 只初始化一次客户端，行业惯例：避免每次调用都重新建连接
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 const SYSTEM_PROMPT = `你是一个专业的图书信息识别助手。
 用户会发给你一张书籍封面图片，你需要从封面中提取信息，并提供优美语句。

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { anthropic as client } from "@/lib/anthropic";
 
 // POST { terms: string[] } → { translations: Record<string, string> }
 // 把静态表里没有的中文词（类型、国家）翻译成英文

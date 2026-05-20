@@ -1,18 +1,12 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { anthropic as client } from "@/lib/anthropic";
 import { preprocessImage } from "@/lib/image";
-import { recognizeBook } from "@/lib/ai";
-import {
-  uploadFileToNotion,
-  createBookPage,
-  findDuplicateBook,
-  listBooksByGenre,
-} from "@/lib/notion";
+import { BOOK_TOOLS, executeBookTool } from "@/lib/book-tools";
+import { listBooksByGenre } from "@/lib/notion";
 import type { BookInfo } from "@/types/book";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // SSE 格式：每条消息都是 "data: {...}\n\n"
 // 这是 Server-Sent Events 协议的规定，浏览器原生支持
@@ -73,76 +67,22 @@ Formatting rules (strictly follow):
 - 用普通换行和数字列表组织内容`;
 }
 
-// 聊天 Agent 的工具集：比 T23 多了 list_books_by_genre（用于回答"给我看看我的 XX 类书"）
-const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
-  {
-    name: "recognize_book_from_image",
-    description: "从用户上传的书封面图片中提取书籍信息",
-    input_schema: { type: "object", properties: {}, required: [] },
-  },
-  {
-    name: "check_duplicate_in_notion",
-    description: "检查 Notion 书库中是否已有这本书",
-    input_schema: {
-      type: "object",
-      properties: {
-        title:  { type: "string", description: "书名" },
-        author: { type: "string", description: "作者名" },
-      },
-      required: ["title", "author"],
+// chat 独有工具：查询某类型书籍（入库流程用不到，只在聊天场景需要）
+const LIST_BOOKS_TOOL: Anthropic.Messages.Tool = {
+  name: "list_books_by_genre",
+  description: "查询书架上某个类型的书籍",
+  input_schema: {
+    type: "object",
+    properties: {
+      genre: { type: "string", description: "书籍类型，用中文填写，如：励志、心理相关、历史" },
+      limit: { type: "number", description: "返回数量，默认 5" },
     },
+    required: ["genre"],
   },
-  {
-    name: "upload_cover_to_notion",
-    description: "上传封面图片到 Notion 文件存储",
-    input_schema: {
-      type: "object",
-      properties: { filename: { type: "string" } },
-      required: ["filename"],
-    },
-  },
-  {
-    name: "create_notion_page",
-    description: "在 Notion 书库创建书籍记录",
-    input_schema: {
-      type: "object",
-      properties: {
-        bookInfo: {
-          type: "object",
-          properties: {
-            title:       { type: "string" },
-            subtitle:    { type: "string" },
-            author:      { type: "string" },
-            gender:      { type: "string" },
-            country:     { type: "string" },
-            genres:      { type: "array", items: { type: "string" } },
-            description: { type: "string" },
-            quotes:      { type: "array", items: { type: "string" }, description: "2-3句优美语句" },
-          },
-          required: ["title", "author", "genres", "description"],
-        },
-        fileUploadId: { type: "string", description: "upload_cover_to_notion 返回的 ID" },
-        filename:     { type: "string" },
-      },
-      required: ["bookInfo", "filename"],
-    },
-  },
-  {
-    name: "list_books_by_genre",
-    description: "查询书架上某个类型的书籍",
-    input_schema: {
-      type: "object",
-      properties: {
-        genre: {
-          type: "string",
-          description: "必须是：回忆录、传记、喜剧、冒险、心理相关、励志、身心健康、育儿、科普、园艺、体育、历史、儿童读物、旅行、其他 之一",
-        },
-        limit: { type: "number", description: "返回数量，默认 5" },
-      },
-      required: ["genre"],
-    },
-  },
-];
+};
+
+// 4 个入库工具来自 book-tools.ts，追加 chat 独有的查询工具
+const CHAT_TOOLS = [...BOOK_TOOLS, LIST_BOOKS_TOOL];
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -368,46 +308,18 @@ async function executeDemoTool(name: string, input: Record<string, unknown>): Pr
   }
 }
 
-// 工具执行函数：根据工具名调对应的 lib 函数
+// 工具执行函数：4 个入库工具委托给 book-tools.ts，list_books_by_genre 在本地处理
 type ToolCtx = { base64: string; jpegBuffer: Buffer | null; filename: string; isDemo: boolean };
 
 async function executeTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<unknown> {
-  // Demo 模式：不调用真实 Notion/AI，返回假数据
   if (ctx.isDemo) return executeDemoTool(name, input);
 
-  switch (name) {
-    case "recognize_book_from_image":
-      return await recognizeBook(ctx.base64);
-
-    case "check_duplicate_in_notion": {
-      const { title, author } = input as { title: string; author: string };
-      const url = await findDuplicateBook(title, author);
-      return { exists: url !== null, url };
-    }
-
-    case "upload_cover_to_notion": {
-      if (!ctx.jpegBuffer) return { error: "没有图片可上传" };
-      const { filename } = input as { filename: string };
-      const fileUploadId = await uploadFileToNotion(ctx.jpegBuffer, filename || ctx.filename);
-      return { fileUploadId };
-    }
-
-    case "create_notion_page": {
-      const { bookInfo, fileUploadId, filename } = input as {
-        bookInfo: BookInfo; fileUploadId: string | null; filename: string;
-      };
-      const { pageUrl } = await createBookPage(bookInfo, fileUploadId ?? null, filename || ctx.filename);
-      return { pageUrl };
-    }
-
-    case "list_books_by_genre": {
-      const { genre, limit = 5 } = input as { genre: string; limit?: number };
-      // excludePageId 传 ""：chat 场景不需要排除任何书，展示完整列表
-      const books = await listBooksByGenre(genre, "", limit);
-      return { books };
-    }
-
-    default:
-      throw new Error(`未知工具：${name}`);
+  if (name === "list_books_by_genre") {
+    const { genre, limit = 5 } = input as { genre: string; limit?: number };
+    // excludePageId 传 ""：chat 场景不需要排除任何书
+    const books = await listBooksByGenre(genre, "", limit);
+    return { books };
   }
+
+  return executeBookTool(name, input, ctx);
 }

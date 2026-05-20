@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import Anthropic from "@anthropic-ai/sdk";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-const client = new Anthropic();
+import { anthropic as client } from "@/lib/anthropic";
 
 export async function GET() {
   const session = await auth();

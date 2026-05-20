@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import Anthropic from "@anthropic-ai/sdk";
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import { anthropic as client } from "@/lib/anthropic";
 
 // POST { quotes: string[] } → { translations: string[] }
 // 一次 API call 翻译一批中文语录，返回顺序与输入一致
