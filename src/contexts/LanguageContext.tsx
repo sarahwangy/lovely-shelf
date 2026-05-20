@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import zh from "@/lib/i18n/zh";
 import en from "@/lib/i18n/en";
 import type { Translations } from "@/lib/i18n/zh";
@@ -17,11 +17,15 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // 初始语言从 localStorage 读取，没有则默认中文
-  const [lang, setLang] = useState<Language>(() => {
-    if (typeof window === "undefined") return "zh";
-    return (localStorage.getItem("lovely-shelf-lang") as Language) ?? "zh";
-  });
+  // 服务端和客户端都先用 "zh"，避免 hydration 不匹配
+  // mount 之后再从 localStorage 读实际存储的语言
+  const [lang, setLang] = useState<Language>("zh");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("lovely-shelf-lang");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stored === "en" || stored === "zh") setLang(stored);
+  }, []);
 
   const translations = lang === "zh" ? zh : en;
 
