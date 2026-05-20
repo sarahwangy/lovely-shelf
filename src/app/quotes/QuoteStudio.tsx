@@ -6,6 +6,7 @@ import type { ImageResult } from "@/app/api/images/route";
 import type { VideoResult } from "@/app/api/videos/route";
 import type { MusicResult } from "@/app/api/music/route";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { convertIfHeic } from "@/lib/heic-converter";
 
 // ── 背景预设 ──────────────────────────────────────────────────────
 
@@ -86,53 +87,6 @@ const FONT_SIZE_CLASS: Record<FontSize, string> = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySpeech = any;
-
-// ── HEIC 转 JPEG ──────────────────────────────────────────────────
-
-async function convertIfHeic(file: File): Promise<File> {
-  const name   = file.name.toLowerCase();
-  const isHeic = file.type === "image/heic" || file.type === "image/heif"
-    || name.endsWith(".heic") || name.endsWith(".heif");
-  if (!isHeic) return file;
-  const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const libheif = (await import("libheif-js/wasm-bundle")).default as any;
-    const ab = await file.arrayBuffer();
-    const data = new libheif.HeifDecoder().decode(new Uint8Array(ab));
-    if (!data?.length) throw new Error("no images");
-    const img = data[0];
-    const canvas = document.createElement("canvas");
-    canvas.width = img.get_width(); canvas.height = img.get_height();
-    const ctx = canvas.getContext("2d")!;
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
-    await new Promise<void>((res, rej) =>
-      img.display(imageData, (r: ImageData | null) => r ? res() : rej(new Error("display failed")))
-    );
-    ctx.putImageData(imageData, 0, 0);
-    const blob = await new Promise<Blob>((res, rej) =>
-      canvas.toBlob((b) => b ? res(b) : rej(new Error("toBlob failed")), "image/jpeg", 0.9)
-    );
-    return new File([blob], jpegName, { type: "image/jpeg" });
-  } catch { /* 方法1失败 */ }
-  try {
-    const heic2any = (await import("heic2any")).default;
-    const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-    const jpeg = Array.isArray(result) ? result[0] : result;
-    return new File([jpeg], jpegName, { type: "image/jpeg" });
-  } catch { /* 方法2失败 */ }
-  try {
-    const bitmap = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width; canvas.height = bitmap.height;
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
-    const blob = await new Promise<Blob>((res, rej) =>
-      canvas.toBlob((b) => b ? res(b) : rej(new Error("toBlob failed")), "image/jpeg", 0.9)
-    );
-    return new File([blob], jpegName, { type: "image/jpeg" });
-  } catch { /* 三种方法全失败 */ }
-  return file;
-}
 
 // ── 主组件 ────────────────────────────────────────────────────────
 
@@ -224,7 +178,6 @@ export default function QuoteStudio({
 
   // ── Google Fonts 动态加载 ────────────────────────────────────────
   // 每当字体切换时，把对应的 Google Fonts <link> 注入 <head>（已注入则跳过）
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const option = FONT_OPTIONS.find((f) => f.css === fontFamily);
   if (typeof window !== "undefined" && option?.google) {
     const id = `gf-${option.google.split(":")[0].replace(/\+/g, "-")}`;
@@ -495,7 +448,7 @@ export default function QuoteStudio({
           ctx.beginPath();
           for (let x = 0; x <= W; x++) {
             const y = H - offset*SCALE + Math.sin(x/(W/6) + wavePhase) * 13*SCALE;
-            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           }
           ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
           ctx.fillStyle = col.replace("rgba(", `rgba(`).replace(/,[^,]+\)$/, `,${a})`);

@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar";
 import type { QuoteBook } from "@/app/api/quotes/route";
 import type { CardStyle } from "./QuoteStudio";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { loadCache, saveCache } from "@/lib/storage-cache";
 
 // QuoteStudio 依赖 DOM API，必须关闭 SSR
 const QuoteStudio = dynamic(() => import("./QuoteStudio"), { ssr: false });
@@ -99,16 +100,8 @@ const QUOTES_PAGE_SIZE = 10;
 // sessionStorage key：缓存已翻译的语录，避免重复调用 Claude API
 const TRANSLATION_CACHE_KEY = "lovely-shelf-quote-translations";
 
-function loadTranslationCache(): Record<string, string> {
-  try {
-    const raw = sessionStorage.getItem(TRANSLATION_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
-  } catch { return {}; }
-}
-
-function saveTranslationCache(cache: Record<string, string>) {
-  try { sessionStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
-}
+const loadTranslationCache = () => loadCache<Record<string, string>>(TRANSLATION_CACHE_KEY, "session");
+const saveTranslationCache = (cache: Record<string, string>) => saveCache(TRANSLATION_CACHE_KEY, cache, "session");
 
 export default function QuotesPage() {
   const { t } = useLanguage();

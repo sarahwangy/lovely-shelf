@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import NavBar from "@/components/NavBar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { convertIfHeic } from "@/lib/heic-converter";
 
 // ── 类型定义 ─────────────────────────────────────────────────────
 
@@ -386,52 +387,6 @@ export default function ChatPage() {
       return updated;
     });
   }, []);
-
-  // HEIC → JPEG 转换（三道保险）
-  const convertIfHeic = async (file: File): Promise<File> => {
-    const name = file.name.toLowerCase();
-    const isHeic = file.type === "image/heic" || file.type === "image/heif"
-      || name.endsWith(".heic") || name.endsWith(".heif");
-    if (!isHeic) return file;
-    const jpegName = file.name.replace(/\.heic$/i, ".jpg").replace(/\.heif$/i, ".jpg");
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const libheif = (await import("libheif-js/wasm-bundle")).default as any;
-      const ab = await file.arrayBuffer();
-      const data = new libheif.HeifDecoder().decode(new Uint8Array(ab));
-      if (!data?.length) throw new Error("no images");
-      const img = data[0];
-      const canvas = document.createElement("canvas");
-      canvas.width = img.get_width(); canvas.height = img.get_height();
-      const ctx = canvas.getContext("2d")!;
-      const imageData = ctx.createImageData(canvas.width, canvas.height);
-      await new Promise<void>((res, rej) =>
-        img.display(imageData, (r: ImageData | null) => r ? res() : rej(new Error("display failed")))
-      );
-      ctx.putImageData(imageData, 0, 0);
-      const blob = await new Promise<Blob>((res, rej) =>
-        canvas.toBlob((b) => b ? res(b) : rej(new Error("toBlob failed")), "image/jpeg", 0.9)
-      );
-      return new File([blob], jpegName, { type: "image/jpeg" });
-    } catch { /* 方法1失败 */ }
-    try {
-      const heic2any = (await import("heic2any")).default;
-      const result = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
-      const jpeg = Array.isArray(result) ? result[0] : result;
-      return new File([jpeg], jpegName, { type: "image/jpeg" });
-    } catch { /* 方法2失败 */ }
-    try {
-      const bitmap = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width; canvas.height = bitmap.height;
-      canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
-      const blob = await new Promise<Blob>((res, rej) =>
-        canvas.toBlob((b) => b ? res(b) : rej(new Error("toBlob failed")), "image/jpeg", 0.9)
-      );
-      return new File([blob], jpegName, { type: "image/jpeg" });
-    } catch { /* 三种都失败 */ }
-    return file;
-  };
 
   const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0];

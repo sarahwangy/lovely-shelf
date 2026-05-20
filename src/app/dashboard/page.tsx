@@ -13,19 +13,12 @@ import NavBar from "@/components/NavBar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateTerm } from "@/lib/i18n/termMap";
 import { GENRE_COLORS, BAR_PRIMARY_COLOR, WORD_CLOUD_COLORS } from "@/lib/colors";
+import { loadCache, saveCache } from "@/lib/storage-cache";
 
 const TERM_CACHE_KEY = "lovely-shelf-term-cache";
 
-function loadTermCache(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(TERM_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
-  } catch { return {}; }
-}
-
-function saveTermCache(cache: Record<string, string>) {
-  try { localStorage.setItem(TERM_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
-}
+const loadTermCache = () => loadCache<Record<string, string>>(TERM_CACHE_KEY);
+const saveTermCache = (cache: Record<string, string>) => saveCache(TERM_CACHE_KEY, cache);
 
 export default function DashboardPage() {
   const { t, lang } = useLanguage();
