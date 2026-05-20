@@ -7,83 +7,15 @@ import type { VideoResult } from "@/app/api/videos/route";
 import type { MusicResult } from "@/app/api/music/route";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { convertIfHeic } from "@/lib/heic-converter";
+import {
+  COLOR_PRESETS, GRADIENT_PRESETS, TEXT_COLOR_PRESETS, CARD_EMOJIS,
+  FONT_OPTIONS, FONT_SIZE_LABEL, FONT_SIZE_CLASS,
+} from "./studioConstants";
+import type { BgType, FontSize, VPos, HAlign, FontFamily, CardStyle } from "./studioConstants";
+import { useMediaSearch } from "./useMediaSearch";
+import { useCardExport } from "./useCardExport";
 
-// ── 背景预设 ──────────────────────────────────────────────────────
-
-const COLOR_PRESETS = [
-  { label: "米白",   value: "#F5F0E8" },
-  { label: "鼠尾草", value: "#B2C9B2" },
-  { label: "玫瑰",   value: "#D4A5A5" },
-  { label: "天空",   value: "#A8C4D4" },
-  { label: "杏黄",   value: "#F0C97A" },
-  { label: "陶土",   value: "#C4714A" },
-  { label: "炭灰",   value: "#4A4A4A" },
-  { label: "深靛",   value: "#1B2A4A" },
-];
-
-const GRADIENT_PRESETS = [
-  { label: "暮色",   value: "linear-gradient(135deg, #667eea, #764ba2)" },
-  { label: "日落",   value: "linear-gradient(135deg, #f093fb, #f5576c)" },
-  { label: "海洋",   value: "linear-gradient(135deg, #4facfe, #00f2fe)" },
-  { label: "森林",   value: "linear-gradient(135deg, #134E5E, #71B280)" },
-  { label: "蜜桃",   value: "linear-gradient(135deg, #FFECD2, #FCB69F)" },
-  { label: "黄昏",   value: "linear-gradient(135deg, #2C3E50, #FD746C)" },
-  { label: "薰衣草", value: "linear-gradient(135deg, #a18cd1, #fbc2eb)" },
-  { label: "极光",   value: "linear-gradient(135deg, #0f3443, #34e89e)" },
-];
-
-const TEXT_COLOR_PRESETS = [
-  { label: "白",   value: "#ffffff" },
-  { label: "米",   value: "#F5F0E8" },
-  { label: "金",   value: "#F0C97A" },
-  { label: "粉",   value: "#FFB6C1" },
-  { label: "蓝",   value: "#A8C4D4" },
-  { label: "黑",   value: "#1a1a1a" },
-];
-
-// 精选装饰 Emoji
-const CARD_EMOJIS = [
-  "✨", "🌿", "🌸", "🌊", "🔥", "🌙", "⭐", "🦋",
-  "🍀", "🌺", "💫", "🌈", "🎵", "📖", "💭", "🌻",
-  "🌷", "🎐", "🕊️", "🌃", "🍃", "💐", "🌴", "🏔️",
-];
-
-type BgType   = "color" | "gradient" | "image" | "video";
-type FontSize = "xs" | "sm" | "base" | "lg";
-type VPos     = "top" | "center" | "bottom";
-type HAlign   = "left" | "center" | "right";
-
-// 语录卡样式快照，存 localStorage，打开制作室时恢复
-export type CardStyle = {
-  textColor:  string;
-  fontSize:   FontSize;
-  fontFamily: FontFamily;
-  vPos:       VPos;
-  hAlign:     HAlign;
-  showWave:   boolean;
-  bgType:     BgType;
-  bgValue:    string;
-  videoSrc:   string;
-};
-
-// 字体选项：label 显示名、css 用于 DOM 预览、canvas 用于 canvas ctx.font、google 是 Google Fonts 参数
-const FONT_OPTIONS = [
-  { label: "现代",  css: "system-ui, -apple-system, sans-serif",  canvas: "system-ui",           google: null },
-  { label: "正式",  css: "'Noto Serif SC', serif",                 canvas: "'Noto Serif SC'",     google: "Noto+Serif+SC:wght@400;600" },
-  { label: "可爱",  css: "'ZCOOL KuaiLe', cursive",               canvas: "'ZCOOL KuaiLe'",      google: "ZCOOL+KuaiLe" },
-  { label: "手写",  css: "'Ma Shan Zheng', cursive",              canvas: "'Ma Shan Zheng'",     google: "Ma+Shan+Zheng" },
-  { label: "优雅",  css: "'ZCOOL XiaoWei', serif",                canvas: "'ZCOOL XiaoWei'",     google: "ZCOOL+XiaoWei" },
-  { label: "毛笔",  css: "'Liu Jian Mao Cao', cursive",           canvas: "'Liu Jian Mao Cao'",  google: "Liu+Jian+Mao+Cao" },
-] as const;
-type FontFamily = (typeof FONT_OPTIONS)[number]["css"];
-
-const FONT_SIZE_LABEL: Record<FontSize, string> = { xs: "小", sm: "中", base: "大", lg: "特大" };
-const FONT_SIZE_CLASS: Record<FontSize, string> = {
-  xs:   "text-xs",
-  sm:   "text-sm",
-  base: "text-base",
-  lg:   "text-lg",
-};
+export type { CardStyle };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySpeech = any;
@@ -129,33 +61,24 @@ export default function QuoteStudio({
   const [bgValue, setBgValue] = useState(initialStyle?.bgValue ?? COLOR_PRESETS[0].value);
 
   // ── 图片搜索 ──────────────────────────────────────────────────────
-  const [imageFile,      setImageFile]      = useState<File | null>(null);
-  const [imageUrl,       setImageUrl]       = useState<string | null>(null);
-  const [converting,     setConverting]     = useState(false);
-  const imgSource = "pixabay" as const;
-  const [imgQuery,       setImgQuery]       = useState("");
-  const [imgResults,     setImgResults]     = useState<ImageResult[]>([]);
-  const [imgSearching,   setImgSearching]   = useState(false);
-  const [imgSearchError, setImgSearchError] = useState<string | null>(null);
-  const fileInputRef  = useRef<HTMLInputElement>(null);
-  const textareaRef   = useRef<HTMLTextAreaElement>(null);
+  const [imageFile,  setImageFile]  = useState<File | null>(null);
+  const [imageUrl,   setImageUrl]   = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef  = useRef<HTMLTextAreaElement>(null);
+
+  // 三个搜索各调用一次通用 Hook，state 和 fetch 逻辑不再重复写
+  const imgSearch = useMediaSearch<ImageResult>("/api/images", "images", t.quoteStudio.imgSearchError, "pixabay");
+  const vidSearch = useMediaSearch<VideoResult>("/api/videos", "videos", t.quoteStudio.vidSearchError, "pixabay");
+  const musSearch = useMediaSearch<MusicResult>("/api/music",  "music",  t.quoteStudio.musSearchError);
 
   // ── 视频背景 ──────────────────────────────────────────────────────
-  const [videoSrc,     setVideoSrc]     = useState(initialStyle?.videoSrc ?? "");
-  const vidSource = "pixabay" as const;
-  const [vidQuery,     setVidQuery]     = useState("");
-  const [vidResults,   setVidResults]   = useState<VideoResult[]>([]);
-  const [vidSearching, setVidSearching] = useState(false);
-  const [vidSearchErr, setVidSearchErr] = useState<string | null>(null);
+  const [videoSrc, setVideoSrc] = useState(initialStyle?.videoSrc ?? "");
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // ── 录制配乐 ──────────────────────────────────────────────────────
   const [recMusicUrl,   setRecMusicUrl]   = useState("");
   const [recMusicTitle, setRecMusicTitle] = useState("");
-  const [musQuery,      setMusQuery]      = useState("");
-  const [musResults,    setMusResults]    = useState<MusicResult[]>([]);
-  const [musSearching,  setMusSearching]  = useState(false);
-  const [musSearchErr,  setMusSearchErr]  = useState<string | null>(null);
 
   // ── 语音 ──────────────────────────────────────────────────────────
   const [listening, setListening] = useState(false);
@@ -170,11 +93,8 @@ export default function QuoteStudio({
   const [showMedia, setShowMedia] = useState(false);
 
   // ── 操作状态 ──────────────────────────────────────────────────────
-  const [saving,         setSaving]         = useState(false);
-  const [exporting,      setExporting]      = useState(false);
-  const [recording,      setRecording]      = useState(false);
-  const [recordDuration, setRecordDuration] = useState(5);
-  const [saveError,      setSaveError]      = useState<string | null>(null);
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // ── Google Fonts 动态加载 ────────────────────────────────────────
   // 每当字体切换时，把对应的 Google Fonts <link> 注入 <head>（已注入则跳过）
@@ -253,22 +173,6 @@ export default function QuoteStudio({
     reader.readAsDataURL(file);
   }
 
-  // ── 图片搜索 ──────────────────────────────────────────────────────
-  async function handleImgSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!imgQuery.trim()) return;
-    setImgSearching(true); setImgSearchError(null); setImgResults([]);
-    try {
-      const res  = await fetch(`/api/images?q=${encodeURIComponent(imgQuery)}&source=${imgSource}`);
-      const data = (await res.json()) as { images?: ImageResult[]; error?: string };
-      if (!res.ok || data.error) { setImgSearchError(data.error ?? t.quoteStudio.searchFailed); return; }
-      const imgs = data.images ?? [];
-      setImgResults(imgs);
-      if (imgs.length === 0) setImgSearchError(t.quoteStudio.imgSearchError);
-    } catch { setImgSearchError(t.upload.networkError); }
-    finally { setImgSearching(false); }
-  }
-
   function selectImage(img: ImageResult) {
     setImageUrl(img.fullUrl); setImageFile(null);
     setBgValue(img.fullUrl); setBgType("image");
@@ -278,40 +182,8 @@ export default function QuoteStudio({
     setImageFile(null); setImageUrl(null); setBgValue(""); setBgType("image");
   }
 
-  // ── 视频搜索 ──────────────────────────────────────────────────────
-  async function handleVidSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!vidQuery.trim()) return;
-    setVidSearching(true); setVidSearchErr(null); setVidResults([]);
-    try {
-      const res  = await fetch(`/api/videos?q=${encodeURIComponent(vidQuery)}&source=${vidSource}`);
-      const data = (await res.json()) as { videos?: VideoResult[]; error?: string };
-      if (!res.ok || data.error) { setVidSearchErr(data.error ?? t.quoteStudio.searchFailed); return; }
-      const vids = data.videos ?? [];
-      setVidResults(vids);
-      if (vids.length === 0) setVidSearchErr(t.quoteStudio.vidSearchError);
-    } catch { setVidSearchErr(t.upload.networkError); }
-    finally { setVidSearching(false); }
-  }
-
   function selectVideo(vid: VideoResult) {
     setVideoSrc(vid.videoUrl); setBgType("video"); setBgValue("");
-  }
-
-  // ── 音乐搜索（录制用）────────────────────────────────────────────
-  async function handleMusicSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!musQuery.trim()) return;
-    setMusSearching(true); setMusSearchErr(null); setMusResults([]);
-    try {
-      const res  = await fetch(`/api/music?q=${encodeURIComponent(musQuery)}`);
-      const data = (await res.json()) as { music?: MusicResult[]; error?: string };
-      if (!res.ok || data.error) { setMusSearchErr(data.error ?? t.quoteStudio.searchFailed); return; }
-      const tracks = data.music ?? [];
-      setMusResults(tracks);
-      if (tracks.length === 0) setMusSearchErr(t.quoteStudio.musSearchError);
-    } catch { setMusSearchErr(t.upload.networkError); }
-    finally { setMusSearching(false); }
   }
 
   // ── Emoji 插入光标 ────────────────────────────────────────────────
@@ -348,169 +220,15 @@ export default function QuoteStudio({
     try { localStorage.setItem(styleKey, JSON.stringify(style)); } catch { /* storage full */ }
   }
 
-  // ── 导出 PNG ──────────────────────────────────────────────────────
-  // 用 html-to-image 替代 html2canvas：支持现代 CSS（oklch/oklab）且能渲染 video 元素
-  async function handleExport() {
-    setExporting(true);
-    try {
-      const { toPng } = await import("html-to-image");
-      const el = document.getElementById("qs-card-preview");
-      if (!el) return;
-      const dataUrl = await toPng(el, { pixelRatio: 2, skipFonts: false });
-      const a = document.createElement("a");
-      a.href = dataUrl; a.download = `quote-${Date.now()}.png`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      saveStyle();
-    } finally { setExporting(false); }
-  }
-
-  // ── 录制 MP4（视频背景专用）────────────────────────────────────────
-  // 原理：用 canvas 每帧绘制视频 + 文字叠层 → captureStream → MediaRecorder 录制
-  async function handleExportVideo() {
-    const videoEl = videoRef.current;
-    if (!videoEl || !videoSrc) return;
-    setRecording(true);
-
-    const SCALE = 2;
-    const W = 216 * SCALE, H = 320 * SCALE;
-    const canvas = document.createElement("canvas");
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-
-    // 浏览器对 MP4 支持不一；优先用 mp4，回退到 webm
-    const mimeType    = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
-      ? "video/mp4;codecs=avc1"
-      : "video/webm";
-    const canvasStream = canvas.captureStream(30);
-    const allTracks: MediaStreamTrack[] = [...canvasStream.getVideoTracks()];
-
-    // 混入配乐音轨：AudioContext 路由 → MediaStreamDestination → 拿 audio track
-    let recAudioEl:  HTMLAudioElement | null = null;
-    let recAudioCtx: AudioContext     | null = null;
-    if (recMusicUrl) {
-      try {
-        recAudioCtx = new AudioContext();
-        // 走代理：AudioContext 读取跨域音频需要 CORS 头，代理路由帮我们加上
-        const proxiedAudio = `/api/music/proxy?url=${encodeURIComponent(recMusicUrl)}`;
-        recAudioEl  = new Audio(proxiedAudio);
-        recAudioEl.loop = true;
-        const src  = recAudioCtx.createMediaElementSource(recAudioEl);
-        const dest = recAudioCtx.createMediaStreamDestination();
-        src.connect(dest);
-        src.connect(recAudioCtx.destination); // 录制同时本机也能听到
-        await recAudioEl.play();
-        allTracks.push(...dest.stream.getAudioTracks());
-      } catch (e) {
-        console.warn("[record] 音频混入失败，将录制无声视频:", e);
-        recAudioEl = null; recAudioCtx = null;
-      }
-    }
-
-    const stream   = new MediaStream(allTracks);
-    const recorder = new MediaRecorder(stream, { mimeType });
-    const chunks: Blob[] = [];
-
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = () => {
-      // pause() 只暂停，src = "" 才能彻底释放音频资源并断开 Web Audio 图
-      if (recAudioEl) { recAudioEl.pause(); recAudioEl.src = ""; }
-      void recAudioCtx?.close();
-      const ext  = mimeType.startsWith("video/mp4") ? "mp4" : "webm";
-      const blob = new Blob(chunks, { type: mimeType });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href = url; a.download = `quote-${Date.now()}.${ext}`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      saveStyle();
-      setRecording(false);
-    };
-
-    const fontPx: Record<FontSize, number> = { xs: 11*SCALE, sm: 13*SCALE, base: 15*SCALE, lg: 18*SCALE };
-    let wavePhase = 0;
-    let animId: number;
-
-    function drawFrame() {
-      // 1. 视频帧
-      ctx.drawImage(videoEl!, 0, 0, W, H);
-
-      // 2. 半透明遮罩
-      ctx.fillStyle = "rgba(0,0,0,0.3)";
-      ctx.fillRect(0, 0, W, H);
-
-      // 3. 波浪动画（底部）
-      if (showWave) {
-        wavePhase += 0.04;
-        const col = hexToRgba(textColor, 1);
-        [{ a: 0.22, offset: 26 }, { a: 0.14, offset: 16 }].forEach(({ a, offset }) => {
-          ctx.beginPath();
-          for (let x = 0; x <= W; x++) {
-            const y = H - offset*SCALE + Math.sin(x/(W/6) + wavePhase) * 13*SCALE;
-            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-          ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
-          ctx.fillStyle = col.replace("rgba(", `rgba(`).replace(/,[^,]+\)$/, `,${a})`);
-          ctx.fill();
-        });
-      }
-
-      // 4. 文字内容
-      ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 4 * SCALE;
-      ctx.fillStyle   = textColor;
-      const padX = 20*SCALE;
-      const xPos = hAlign === "left" ? padX : hAlign === "right" ? W - padX : W / 2;
-      ctx.textAlign  = (hAlign === "left" ? "left" : hAlign === "right" ? "right" : "center") as CanvasTextAlign;
-      ctx.textBaseline = "top";
-
-      let y = vPos === "top" ? padX : vPos === "bottom" ? H * 0.45 : H * 0.28;
-
-      // 语句（自动换行）：使用用户选择的字体
-      const canvasFont = FONT_OPTIONS.find((f) => f.css === fontFamily)?.canvas ?? "system-ui";
-      ctx.font = `600 ${fontPx[fontSize]}px ${canvasFont}`;
-      const lines = wrapCanvasText(ctx, text || t.quoteStudio.cardPlaceholder, W - padX * 2);
-      const lh    = fontPx[fontSize] * 1.5;
-      for (const line of lines) { ctx.fillText(line, xPos, y); y += lh; }
-
-      // 书名 / 作者
-      if (bookTitle) {
-        ctx.font = `${11*SCALE}px ${canvasFont}`;
-        ctx.globalAlpha = 0.7;
-        ctx.fillText(`— ${bookTitle}${author ? ` · ${author}` : ""}`, xPos, y + 8*SCALE);
-        ctx.globalAlpha = 1;
-      }
-
-      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
-      animId = requestAnimationFrame(drawFrame);
-    }
-
-    recorder.start();
-    drawFrame();
-    setTimeout(() => { cancelAnimationFrame(animId); recorder.stop(); }, recordDuration * 1000);
-  }
-
-  // canvas 文字自动换行（支持中文和 emoji）
-  function wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    const lines: string[] = [];
-    let current = "";
-    for (const ch of [...text]) {
-      if (ch === "\n") { lines.push(current); current = ""; continue; }
-      const test = current + ch;
-      if (ctx.measureText(test).width > maxWidth && current) { lines.push(current); current = ch; }
-      else { current = test; }
-    }
-    if (current) lines.push(current);
-    return lines;
-  }
-
-  // hex 颜色 → rgba 字符串（给 canvas fillStyle 用）
-  function hexToRgba(hex: string, alpha: number): string {
-    const r = parseInt(hex.slice(1, 3), 16) || 0;
-    const g = parseInt(hex.slice(3, 5), 16) || 0;
-    const b = parseInt(hex.slice(5, 7), 16) || 0;
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
+  // ── 导出 / 录制（委托给 useCardExport）──────────────────────────────
+  const { handleExport, handleExportVideo, exporting, recording, recordDuration, setRecordDuration } =
+    useCardExport(
+      { text, bookTitle, author },
+      { textColor, fontSize, fontFamily, vPos, hAlign, showWave, videoSrc },
+      videoRef,
+      recMusicUrl,
+      saveStyle,
+    );
 
   // ── 保存 ─────────────────────────────────────────────────────────
   async function handleSave() {
@@ -759,19 +477,19 @@ export default function QuoteStudio({
                     </button>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLocalUpload} />
                     <p className="text-xs text-stone-400">{t.quoteStudio.pixabayHint}</p>
-                    <form onSubmit={handleImgSearch} className="flex gap-2">
-                      <input value={imgQuery} onChange={(e) => setImgQuery(e.target.value)}
+                    <form onSubmit={imgSearch.handleSearch} className="flex gap-2">
+                      <input value={imgSearch.query} onChange={(e) => imgSearch.setQuery(e.target.value)}
                         placeholder={t.quoteStudio.searchImgPlaceholder}
                         className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
-                      <button type="submit" disabled={imgSearching}
+                      <button type="submit" disabled={imgSearch.searching}
                         className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                        {imgSearching ? "…" : t.quoteStudio.searchBtn}
+                        {imgSearch.searching ? "…" : t.quoteStudio.searchBtn}
                       </button>
                     </form>
-                    {imgSearchError && <p className="text-xs text-red-500">{imgSearchError}</p>}
-                    {imgResults.length > 0 && (
+                    {imgSearch.error && <p className="text-xs text-red-500">{imgSearch.error}</p>}
+                    {imgSearch.results.length > 0 && (
                       <div className="grid grid-cols-3 gap-2">
-                        {imgResults.map((img) => (
+                        {imgSearch.results.map((img) => (
                           <button key={img.id} type="button" onClick={() => selectImage(img)}
                             className={`aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all ${
                               imageUrl === img.fullUrl ? "border-shelf-500 scale-95" : "border-transparent hover:scale-95"
@@ -798,19 +516,19 @@ export default function QuoteStudio({
                       </div>
                     )}
                     <p className="text-xs text-stone-400">{t.quoteStudio.pixabayVideoHint}</p>
-                    <form onSubmit={handleVidSearch} className="flex gap-2">
-                      <input value={vidQuery} onChange={(e) => setVidQuery(e.target.value)}
+                    <form onSubmit={vidSearch.handleSearch} className="flex gap-2">
+                      <input value={vidSearch.query} onChange={(e) => vidSearch.setQuery(e.target.value)}
                         placeholder={t.quoteStudio.searchVidPlaceholder}
                         className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
-                      <button type="submit" disabled={vidSearching}
+                      <button type="submit" disabled={vidSearch.searching}
                         className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                        {vidSearching ? "…" : t.quoteStudio.searchBtn}
+                        {vidSearch.searching ? "…" : t.quoteStudio.searchBtn}
                       </button>
                     </form>
-                    {vidSearchErr && <p className="text-xs text-red-500">{vidSearchErr}</p>}
-                    {vidResults.length > 0 && (
+                    {vidSearch.error && <p className="text-xs text-red-500">{vidSearch.error}</p>}
+                    {vidSearch.results.length > 0 && (
                       <div className="grid grid-cols-3 gap-2">
-                        {vidResults.map((vid) => (
+                        {vidSearch.results.map((vid) => (
                           <button key={vid.id} type="button" onClick={() => selectVideo(vid)}
                             className={`aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all relative ${
                               videoSrc === vid.videoUrl ? "border-shelf-500 scale-95" : "border-transparent hover:scale-95"
@@ -837,26 +555,26 @@ export default function QuoteStudio({
                         <div className="flex items-center gap-2 bg-shelf-50 border border-shelf-200 rounded-xl px-3 py-2 mb-2">
                           <span className="text-xs text-shelf-700 flex-1 truncate">♪ {recMusicTitle}</span>
                           <button type="button"
-                            onClick={() => { setRecMusicUrl(""); setRecMusicTitle(""); setMusResults([]); }}
+                            onClick={() => { setRecMusicUrl(""); setRecMusicTitle(""); musSearch.setQuery(""); }}
                             className="text-stone-400 hover:text-stone-600 text-xs shrink-0">✕</button>
                         </div>
                       )}
 
-                      <form onSubmit={handleMusicSearch} className="flex gap-2">
-                        <input value={musQuery} onChange={(e) => setMusQuery(e.target.value)}
+                      <form onSubmit={musSearch.handleSearch} className="flex gap-2">
+                        <input value={musSearch.query} onChange={(e) => musSearch.setQuery(e.target.value)}
                           placeholder={t.quoteStudio.searchMusPlaceholder}
                           className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-shelf-400 transition-colors" />
-                        <button type="submit" disabled={musSearching}
+                        <button type="submit" disabled={musSearch.searching}
                           className="px-4 py-2 bg-shelf-500 hover:bg-shelf-600 disabled:bg-stone-200 text-white rounded-xl text-sm transition-colors">
-                          {musSearching ? "…" : t.quoteStudio.searchBtn}
+                          {musSearch.searching ? "…" : t.quoteStudio.searchBtn}
                         </button>
                       </form>
-                      {musSearchErr && <p className="text-xs text-red-500 mt-1">{musSearchErr}</p>}
+                      {musSearch.error && <p className="text-xs text-red-500 mt-1">{musSearch.error}</p>}
 
                       {/* 音乐结果列表 */}
-                      {musResults.length > 0 && (
+                      {musSearch.results.length > 0 && (
                         <div className="mt-2 space-y-1.5 max-h-44 overflow-y-auto">
-                          {musResults.map((m) => {
+                          {musSearch.results.map((m) => {
                             // 音频走代理路由：绕过 Jamendo CDN 的 CORS 限制
                             const proxied = `/api/music/proxy?url=${encodeURIComponent(m.previewUrl)}`;
                             return (
