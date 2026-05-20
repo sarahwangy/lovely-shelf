@@ -96,22 +96,39 @@ type StudioTarget = {
 
 const QUOTES_PAGE_SIZE = 10;
 
+// sessionStorage key：缓存已翻译的语录，避免重复调用 Claude API
+const TRANSLATION_CACHE_KEY = "lovely-shelf-quote-translations";
+
+function loadTranslationCache(): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem(TRANSLATION_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch { return {}; }
+}
+
+function saveTranslationCache(cache: Record<string, string>) {
+  try { sessionStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cache)); } catch { /* ignore */ }
+}
+
 export default function QuotesPage() {
   const { t } = useLanguage();
-  const [books,      setBooks]      = useState<QuoteBook[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
-  const [likes,      setLikes]      = useState<Set<string>>(new Set());
-  const [studio,     setStudio]     = useState<StudioTarget | null>(null);
-  const [showExport, setShowExport] = useState(false);
-  const [tab,        setTab]        = useState<"all" | "manual" | "notion" | "liked">("all");
-  const [quotePage,  setQuotePage]  = useState(1);
+  const [books,        setBooks]        = useState<QuoteBook[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
+  const [likes,        setLikes]        = useState<Set<string>>(new Set());
+  const [studio,       setStudio]       = useState<StudioTarget | null>(null);
+  const [showExport,   setShowExport]   = useState(false);
+  const [tab,          setTab]          = useState<"all" | "manual" | "notion" | "liked">("all");
+  const [quotePage,    setQuotePage]    = useState(1);
+  // translations：中文原文 → 英文译文，避免重复翻译
+  const [translations, setTranslations] = useState<Record<string, string>>({});
 
   // 用户是否已手动保存过语录
   // 用 ref 而不是 state：只需要在 GET 响应里读取，不需要触发重渲染
   const userSavedRef = useRef(false);
 
   // tab 切换时回到第一页
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setQuotePage(1); }, [tab]);
 
   useEffect(() => {
@@ -120,6 +137,7 @@ export default function QuotesPage() {
     // 否则：第一次 fetch 先完成 → 用户保存语录 → 第二次 fetch 完成覆盖 → 语录消失
     let cancelled = false;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLikes(loadLikes());
     fetch("/api/quotes")
       .then((r) => r.json())
@@ -198,7 +216,7 @@ export default function QuotesPage() {
     book.quotes.map((text, idx) => ({ text, idx, book }))
   );
 
-  const filteredQuotes = allQuotes.filter(({ text, idx, book }) => {
+  const filteredQuotes = allQuotes.filter(({ idx, book }) => {
     if (tab === "manual") return book.bookTitle === "手动语录";
     if (tab === "notion") return book.bookTitle !== "手动语录";
     if (tab === "liked")  return likes.has(likeKey(book.pageId, idx));
@@ -210,6 +228,42 @@ export default function QuotesPage() {
     (quotePage - 1) * QUOTES_PAGE_SIZE,
     quotePage * QUOTES_PAGE_SIZE
   );
+
+  // 当前页语录变化时，翻译还没缓存过的条目
+  useEffect(() => {
+    const untranslated = visibleQuotes
+      .map((q) => q.text)
+      .filter((text) => !translations[text]);
+    if (untranslated.length === 0) return;
+
+    // 先从 sessionStorage 读缓存，命中的直接用
+    const cache = loadTranslationCache();
+    const stillNeeded = untranslated.filter((text) => !cache[text]);
+
+    if (stillNeeded.length > 0) {
+      fetch("/api/translate-quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quotes: stillNeeded }),
+      })
+        .then((r) => r.json())
+        .then((data: { translations: string[] }) => {
+          const newEntries: Record<string, string> = {};
+          stillNeeded.forEach((text, i) => {
+            if (data.translations[i]) newEntries[text] = data.translations[i];
+          });
+          const merged = { ...cache, ...newEntries };
+          saveTranslationCache(merged);
+          setTranslations((prev) => ({ ...prev, ...merged }));
+        })
+        .catch(() => { /* 翻译失败静默处理，只显示中文 */ });
+    } else {
+      // 全部命中 sessionStorage 缓存，直接更新 state
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTranslations((prev) => ({ ...prev, ...cache }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleQuotes.map((q) => q.text).join("|")]);
 
   const TABS: { key: typeof tab; label: string; icon: string }[] = [
     { key: "all",    label: t.quotes.tabAll,         icon: "📖" },
@@ -333,6 +387,7 @@ export default function QuotesPage() {
                   <QuoteCard
                     key={key}
                     text={text}
+                    translation={translations[text]}
                     book={book}
                     liked={likes.has(key)}
                     onToggle={() => toggleLike(key)}
@@ -400,13 +455,14 @@ export default function QuotesPage() {
 // ── 语录卡片 ─────────────────────────────────────────────────────
 
 function QuoteCard({
-  text, book, liked, onToggle, onMakeCard,
+  text, translation, book, liked, onToggle, onMakeCard,
 }: {
-  text:       string;
-  book:       QuoteBook;
-  liked:      boolean;
-  onToggle:   () => void;
-  onMakeCard: () => void;
+  text:         string;
+  translation?: string;
+  book:         QuoteBook;
+  liked:        boolean;
+  onToggle:     () => void;
+  onMakeCard:   () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -423,9 +479,12 @@ function QuoteCard({
 
       {/* 内容区：pb-9 留出右下角按钮的空间 */}
       <div className="flex-1 min-w-0 pb-9">
-        <p className="text-ink text-base leading-relaxed border-l-2 border-shelf-300 pl-3 mb-3 break-words">
-          {text}
-        </p>
+        <div className="border-l-2 border-shelf-300 pl-3 mb-3">
+          <p className="text-ink text-base leading-relaxed break-words">{text}</p>
+          {translation && (
+            <p className="text-ink-muted text-xs leading-relaxed mt-1 break-words">{translation}</p>
+          )}
+        </div>
         <div className="min-w-0">
           {liked && (
             <span className="inline-flex items-center gap-1 text-xs text-red-500 mb-1">
