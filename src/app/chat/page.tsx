@@ -120,7 +120,7 @@ function HeartbeatWidget() {
 
 // 随机正能量语录卡：初始显示种子语录，点"换一句"调 Claude API 动态生成
 function QuoteWidget() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [quote, setQuote] = useState(
     () => SEED_QUOTES[Math.floor(Math.random() * SEED_QUOTES.length)]
   );
@@ -153,7 +153,8 @@ function QuoteWidget() {
         </div>
       ) : (
         <div>
-          <p className="text-sm font-medium text-ink leading-relaxed mb-1">{lang === "zh" ? quote.zh : quote.en}</p>
+          <p className="text-sm font-medium text-ink leading-relaxed">{quote.zh}</p>
+          <p className="text-xs text-ink-muted leading-relaxed mt-1">{quote.en}</p>
         </div>
       )}
 
