@@ -313,23 +313,18 @@ function EmptyState({ onSelect }: { onSelect: (hint: string) => void }) {
   const hints     = lang === "zh" ? HINTS_ZH : HINTS_EN;
   const firstName = session?.user?.name?.split(" ")[0] ?? t.chat.friend;
   const greeting  = getGreeting();
-  // useState 初始化只跑一次，避免每次重渲染都换一句话
-  const [quote]   = useState(() => SEED_QUOTES[Math.floor(Math.random() * SEED_QUOTES.length)]);
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-5 px-6 text-center">
 
-      {/* 手机专属：打招呼 + 随机语录（桌面端已在左侧边栏显示）*/}
+      {/* 手机专属：打招呼 + 语录（桌面端已在左侧边栏显示）*/}
       <div className="md:hidden w-full max-w-sm bg-white rounded-2xl p-5 shadow-sm border border-stone-100 text-left">
         <p className="text-xs text-ink-muted mb-1 font-medium">👋 {t.chat.greetingHi}</p>
         <p className="text-xl font-bold text-ink leading-tight">
           {greeting}, <span className="text-shelf-500">{firstName}</span>
         </p>
         <div className="mt-3 pt-3 border-t border-stone-100">
-          <p className="text-xs font-medium text-ink-muted mb-1.5 uppercase tracking-wide">Daily Spark</p>
-          <p className="text-sm text-ink leading-relaxed">
-            {lang === "zh" ? quote.zh : quote.en}
-          </p>
+          <QuoteWidget />
         </div>
       </div>
 
