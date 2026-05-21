@@ -45,3 +45,8 @@ next-env.d.ts
 .claude/secrets.json
 .claude/.env
 .claude/settings.local.json
+
+# graphify - generated analysis cache, no need to commit
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/README.md
