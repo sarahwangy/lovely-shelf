@@ -168,10 +168,10 @@ export default function QuotesPage() {
     // GET 可能还未完成（loading=true），保存后强制退出加载态，让 tab 栏显示
     setLoading(false);
     setBooks((prev) => {
-      // 若"手动语录"页已在列表中，替换它（追加了新语句）；否则插到最前面
+      // 无论是新建还是追加，都把"手动语录" book 移到列表最前面
       const exists = prev.some((b) => b.pageId === book.pageId);
       return exists
-        ? prev.map((b) => (b.pageId === book.pageId ? book : b))
+        ? [book, ...prev.filter((b) => b.pageId !== book.pageId)]
         : [book, ...prev];
     });
     // 切回"全部"tab + 第 1 页，确保用户能立刻看到新添加的语录
@@ -212,9 +212,11 @@ export default function QuotesPage() {
     });
   }
 
-  const allQuotes = books.flatMap((book) =>
-    book.quotes.map((text, idx) => ({ text, idx, book }))
-  );
+  const allQuotes = books.flatMap((book) => {
+    // 手动语录倒序显示：最新添加的排在最前面
+    const mapped = book.quotes.map((text, idx) => ({ text, idx, book }));
+    return book.bookTitle === "手动语录" ? mapped.reverse() : mapped;
+  });
 
   const filteredQuotes = allQuotes.filter(({ idx, book }) => {
     if (tab === "manual") return book.bookTitle === "手动语录";
