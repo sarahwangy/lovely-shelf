@@ -264,7 +264,60 @@ function MarkdownText({ text }: { text: string }) {
   );
 }
 
+type BookItem = { pageId: string; bookTitle: string; author: string };
+
 function MessageBubble({ msg }: { msg: DisplayMessage }) {
+  const [copied,      setCopied]      = useState(false);
+  const [showPicker,  setShowPicker]  = useState(false);
+  const [bookSearch,  setBookSearch]  = useState("");
+  const [books,       setBooks]       = useState<BookItem[]>([]);
+  const [loadingBooks,setLoadingBooks]= useState(false);
+  const [saving,      setSaving]      = useState(false);
+  const [savedBook,   setSavedBook]   = useState<string | null>(null);
+
+  // 流式传输完成后才显示操作按钮
+  const isDone = msg.role === "assistant" && !msg.streaming && !!msg.content;
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function togglePicker() {
+    setShowPicker((v) => !v);
+    // 首次展开时拉取书单
+    if (books.length > 0 || loadingBooks) return;
+    setLoadingBooks(true);
+    try {
+      const res  = await fetch("/api/quotes");
+      const data = (await res.json()) as { books?: BookItem[] };
+      // 排除"手动语录"聚合页，保留真正的书籍
+      setBooks((data.books ?? []).filter((b) => b.bookTitle !== "手动语录"));
+    } finally {
+      setLoadingBooks(false);
+    }
+  }
+
+  async function saveToBook(pageId: string, bookTitle: string) {
+    setSaving(true);
+    try {
+      await fetch("/api/chat/save-to-notion", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ text: msg.content, pageId }),
+      });
+      setSavedBook(bookTitle);
+      setShowPicker(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filtered = books.filter(
+    (b) => b.bookTitle.includes(bookSearch) || b.author.includes(bookSearch)
+  );
+
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -301,6 +354,78 @@ function MessageBubble({ msg }: { msg: DisplayMessage }) {
             {msg.streaming && (
               <span className="inline-block w-0.5 h-4 bg-shelf-500 ml-0.5 animate-pulse align-middle" />
             )}
+          </div>
+        )}
+
+        {/* ── 操作按钮（流式完成后显示）── */}
+        {isDone && (
+          <div className="flex items-center gap-3 pl-1">
+            {/* Copy 按钮 */}
+            <button type="button" onClick={handleCopy}
+              className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors">
+              {copied ? (
+                <><span className="text-green-500">✓</span><span className="text-green-500">已复制</span></>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  复制
+                </>
+              )}
+            </button>
+
+            {/* Save to Notion 按钮 */}
+            <button type="button" onClick={togglePicker}
+              className={`flex items-center gap-1 text-xs transition-colors ${
+                savedBook ? "text-green-500" : "text-ink-muted hover:text-shelf-600"
+              }`}>
+              {savedBook ? (
+                <><span>✓</span><span>已存到《{savedBook}》</span></>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                  </svg>
+                  存到 Notion
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* ── 书籍搜索面板 ── */}
+        {showPicker && (
+          <div className="bg-white border border-stone-200 rounded-xl shadow-lg p-3 w-72">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-ink">选择要保存到的书</span>
+              <button type="button" onClick={() => setShowPicker(false)}
+                className="text-ink-muted hover:text-ink text-xs w-5 h-5 flex items-center justify-center rounded">✕</button>
+            </div>
+            <input
+              autoFocus
+              value={bookSearch}
+              onChange={(e) => setBookSearch(e.target.value)}
+              placeholder="搜索书名 / 作者…"
+              className="w-full text-xs bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:border-shelf-400 transition-colors"
+            />
+            <div className="max-h-44 overflow-y-auto space-y-0.5">
+              {loadingBooks ? (
+                <p className="text-xs text-ink-muted text-center py-3">加载书单中…</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-xs text-ink-muted text-center py-3">没有找到书籍</p>
+              ) : (
+                filtered.map((b) => (
+                  <button key={b.pageId} type="button"
+                    onClick={() => saveToBook(b.pageId, b.bookTitle)}
+                    disabled={saving}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-shelf-50 text-xs text-ink transition-colors disabled:opacity-50">
+                    <span className="font-medium">{b.bookTitle}</span>
+                    {b.author && <span className="text-ink-muted ml-1">· {b.author}</span>}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
