@@ -154,7 +154,10 @@ export default function DashboardPage() {
                     innerRadius={70}
                     outerRadius={105}
                     paddingAngle={2}
-                    onClick={(entry) => router.push(`/dashboard/genre/${encodeURIComponent(entry.name ?? "")}`)}
+                    onClick={(entry) => {
+                      const g = displayGenres.find(d => d.name === entry.name);
+                      router.push(`/dashboard/genre/${encodeURIComponent(g?.displayName ?? entry.name ?? "")}`);
+                    }}
                     className="cursor-pointer"
                   >
                     {displayGenres.map((_, i) => (
@@ -180,7 +183,7 @@ export default function DashboardPage() {
                   <button
                     key={g.name}
                     type="button"
-                    onClick={() => router.push(`/dashboard/genre/${encodeURIComponent(g.name)}`)}
+                    onClick={() => router.push(`/dashboard/genre/${encodeURIComponent(g.displayName)}`)}
                     className="bg-shelf-50 hover:bg-shelf-100 rounded-2xl p-4 flex items-center gap-4 transition-colors text-left"
                   >
                     <span className="text-2xl shrink-0">{["🥇", "🥈", "🥉"][i]}</span>

@@ -88,3 +88,11 @@ export function translateTerm(
   const map = type === "genre" ? GENRE_ZH_TO_EN : COUNTRY_ZH_TO_EN;
   return map[name] ?? name;
 }
+
+// 将英文（或中文）分类名转回中文，用于 API 查询 Notion
+export function toZhTerm(name: string, type: "genre" | "country"): string {
+  const map = type === "genre" ? GENRE_ZH_TO_EN : COUNTRY_ZH_TO_EN;
+  if (name in map) return name; // 已经是中文
+  const entry = Object.entries(map).find(([, en]) => en === name);
+  return entry ? entry[0] : name;
+}

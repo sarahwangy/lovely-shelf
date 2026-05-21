@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BookDetailModal from "@/components/BookDetailModal";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translateTerm, toZhTerm } from "@/lib/i18n/termMap";
 import type { BookSummary } from "@/types/book";
 
 const PAGE_SIZE = 10;
 
 export default function GenrePage({ params }: { params: Promise<{ name: string }> }) {
   const router = useRouter();
+  const { lang, t } = useLanguage();
   const [books, setBooks]       = useState<BookSummary[]>([]);
   const [genreName, setGenreName] = useState("");
   const [loading, setLoading]   = useState(true);
@@ -19,7 +22,9 @@ export default function GenrePage({ params }: { params: Promise<{ name: string }
     params.then(({ name }) => {
       const decoded = decodeURIComponent(name);
       setGenreName(decoded);
-      fetch(`/api/books?genre=${encodeURIComponent(decoded)}`)
+      // URL 可能是英文名（英文模式）或中文名，统一转回中文再查 Notion
+      const zhName = toZhTerm(decoded, "genre");
+      fetch(`/api/books?genre=${encodeURIComponent(zhName)}`)
         .then((r) => r.json())
         .then(setBooks)
         .finally(() => setLoading(false));
@@ -47,8 +52,8 @@ export default function GenrePage({ params }: { params: Promise<{ name: string }
           ←
         </button>
         <div>
-          <h1 className="font-bold text-ink text-base">{genreName}</h1>
-          <p className="text-xs text-ink-muted">{books.length} 本</p>
+          <h1 className="font-bold text-ink text-base">{translateTerm(genreName, "genre", lang)}</h1>
+          <p className="text-xs text-ink-muted">{t.dashboard.booksUnit(books.length)}</p>
         </div>
       </header>
 
