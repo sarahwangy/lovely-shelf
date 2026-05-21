@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lovely Shelf — 路由地图</title>
+<style>
+  /* ── Airbnb Design Tokens ── */
+  :root {
+    --rausch:    #ff385c;
+    --rausch-d:  #d93025;
+    --babu:      #00a699;
+    --ariel:     #fc642d;
+    --ink:       #222222;
+    --foggy:     #717171;
+    --cement:    #b0b0b0;
+    --haze:      #f7f7f7;
+    --canvas:    #ffffff;
+    --border:    #dddddd;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,.08);
+    --shadow-md: 0 4px 20px rgba(0,0,0,.12);
+    --r-sm:      8px;
+    --r-md:      14px;
+    --r-full:    9999px;
+    --font:      "Circular", "Airbnb Cereal VF", -apple-system, "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--haze); color: var(--ink); }
+
+  /* ── Nav ── */
+  nav {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: var(--shadow-sm);
+  }
+  .nav-logo { font-size: 22px; font-weight: 700; color: var(--rausch); letter-spacing: -0.5px; }
+  .nav-sub { font-size: 13px; color: var(--foggy); margin-left: 12px; }
+  .base-url-pill {
+    background: var(--haze);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    padding: 6px 16px;
+    font-size: 13px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    color: var(--foggy);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .base-url-pill input {
+    border: none; background: transparent; font-family: inherit;
+    font-size: 13px; color: var(--ink); outline: none; width: 240px;
+  }
+
+  /* ── Layout ── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  h2.section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--cement);
+    margin: 40px 0 16px;
+  }
+
+  /* ── Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .page-card {
+    background: var(--canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 20px 22px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: box-shadow .15s, transform .15s;
+    cursor: pointer;
+  }
+  .page-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .page-card .icon { font-size: 24px; }
+  .page-card .path {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--rausch);
+  }
+  .page-card .desc { font-size: 13px; color: var(--foggy); line-height: 1.5; }
+  .page-card .badge {
+    align-self: flex-start;
+    background: #fff0f3;
+    color: var(--rausch);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--r-full);
+    letter-spacing: .4px;
+  }
+
+  /* ── API Table ── */
+  .api-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .api-table thead tr { background: var(--haze); }
+  .api-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--cement);
+    border-bottom: 1px solid var(--border);
+  }
+  .api-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+  }
+  .api-table tr:last-child td { border-bottom: none; }
+  .api-table tr:hover td { background: #fafafa; }
+
+  .method {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--r-sm);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    font-family: "SF Mono", "Fira Code", monospace;
+  }
+  .method.GET    { background: #e8f4fd; color: #0070c9; }
+  .method.POST   { background: #e6f9f3; color: #00875a; }
+  .method.PATCH  { background: #fff8e6; color: #b76e00; }
+  .method.DELETE { background: #fff0f0; color: #c0392b; }
+  .method.ANY    { background: #f0f0f0; color: #555; }
+
+  code.path-code {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--haze);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  code.path-code .param { color: var(--rausch); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: var(--r-full);
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .tag.auth    { background: #fef3d0; color: #92610a; }
+  .tag.demo    { background: #e8f4fd; color: #0060a3; }
+  .tag.stream  { background: #f0e9ff; color: #6b3fa0; }
+  .tag.public  { background: #e6f9f3; color: #007a4d; }
+
+  .desc-text { color: var(--foggy); }
+
+  /* ── copy button ── */
+  .copy-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--cement); font-size: 13px; padding: 2px 4px;
+    border-radius: 4px; transition: color .1s;
+  }
+  .copy-btn:hover { color: var(--ink); }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--foggy); }
+
+  /* ── Stats ── */
+  .stats-row {
+    display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
+  }
+  .stat-pill {
+    background: var(--canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    padding: 8px 20px;
+    font-size: 13px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .stat-pill strong { color: var(--rausch); font-size: 16px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav>
+  <div style="display:flex;align-items:center">
+    <span class="nav-logo">📚 Lovely Shelf</span>
+    <span class="nav-sub">路由地图 · Route Map</span>
+  </div>
+  <div class="base-url-pill">
+    <span style="color:var(--cement);font-size:11px">BASE</span>
+    <input id="baseUrl" value="https://lovely-shelf.vercel.app" placeholder="https://lovely-shelf.vercel.app" />
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ── Stats ── -->
+  <div class="stats-row" style="margin-top:32px">
+    <div class="stat-pill"><strong>8</strong> 页面路由</div>
+    <div class="stat-pill"><strong>18</strong> API 路由</div>
+    <div class="stat-pill"><strong>2</strong> SSE 流式接口</div>
+    <div class="stat-pill"><strong>1</strong> Tool Use Agent</div>
+  </div>
+
+  <!-- ────────────────────────────────────────────── -->
+  <!-- PAGE ROUTES                                    -->
+  <!-- ────────────────────────────────────────────── -->
+  <h2 class="section-title">页面路由 · Pages</h2>
+
+  <div class="card-grid">
+
+    <a class="page-card" onclick="openPage('/')">
+      <div class="icon">🏠</div>
+      <div class="path">/</div>
+      <div class="desc">首页 — 自动跳转到上传页或 Dashboard</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/login')">
+      <div class="icon">🔑</div>
+      <div class="path">/login</div>
+      <div class="desc">登录页 — Google OAuth 授权，只有 allowlist 邮箱可通过</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/upload')">
+      <div class="icon">📷</div>
+      <div class="path">/upload</div>
+      <div class="desc">扫描上传页 — 拍照或上传封面，触发 AI 识别入库流程</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/result')">
+      <div class="icon">✅</div>
+      <div class="path">/result</div>
+      <div class="desc">识别结果页 — 展示 AI 识别的书名/作者/简介，确认后写入 Notion</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/dashboard')">
+      <div class="icon">📊</div>
+      <div class="path">/dashboard</div>
+      <div class="desc">看板页 — 总览统计、分类饼图、热词云、阅读热力图、最近入库</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/dashboard/genre/小说')">
+      <div class="icon">📂</div>
+      <div class="path">/dashboard/genre/<span style="color:var(--rausch)">[name]</span></div>
+      <div class="desc">分类书单页 — 某一分类下所有书的卡片列表，支持排序/搜索</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/quotes')">
+      <div class="icon">💬</div>
+      <div class="path">/quotes</div>
+      <div class="desc">语录页 — 管理所有摘录，内嵌 QuoteStudio 制作分享卡片</div>
+      <div class="badge">GET</div>
+    </a>
+
+    <a class="page-card" onclick="openPage('/chat')">
+      <div class="icon">🤖</div>
+      <div class="path">/chat</div>
+      <div class="desc">AI 聊书页 — SSE 流式对话，支持工具调用（识别/入库/查书）</div>
+      <div class="badge">GET</div>
+    </a>
+
+  </div>
+
+  <!-- ────────────────────────────────────────────── -->
+  <!-- API ROUTES                                     -->
+  <!-- ────────────────────────────────────────────── -->
+  <h2 class="section-title">API 路由 · Endpoints</h2>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><span class="tag auth">auth</span> 需要登录（session）</div>
+    <div class="legend-item"><span class="tag demo">demo</span> Demo 用户有特殊处理</div>
+    <div class="legend-item"><span class="tag stream">stream</span> SSE 流式响应</div>
+    <div class="legend-item"><span class="tag public">public</span> 无需认证</div>
+  </div>
+
+  <table class="api-table">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>路径</th>
+        <th>说明</th>
+        <th>标签</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- Process -->
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/process</code></td>
+        <td class="desc-text">图书入库主流程：图片 → 预处理 → AI 识别 → 查重 → 写入 Notion</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/process')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Books -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/books?genre=<span class="param">分类名</span></code></td>
+        <td class="desc-text">按分类获取所有书（书名/作者/封面/状态）</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/books?genre=小说')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/books/<span class="param">[pageId]</span></code></td>
+        <td class="desc-text">获取单本书详情（含语录、笔记等 Notion block 内容）</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/books/')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Quotes -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/quotes</code></td>
+        <td class="desc-text">获取所有语录，按书分组，包含封面/配乐 URL</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/quotes')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/quotes</code></td>
+        <td class="desc-text">新增语录（关联到指定书的 Notion 页面）</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/quotes')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method PATCH">PATCH</span></td>
+        <td><code class="path-code">/api/quotes</code></td>
+        <td class="desc-text">更新语录内容（编辑已有摘录文本）</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/quotes')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Chat -->
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/chat</code></td>
+        <td class="desc-text">AI 聊书对话，SSE 流式推送，支持书籍识别/入库工具调用</td>
+        <td><span class="tag auth">auth</span><span class="tag stream">stream</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/chat')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/chat/save-to-notion</code></td>
+        <td class="desc-text">把 AI 对话内容保存到 Notion 指定页面</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/chat/save-to-notion')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Agent -->
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/agent</code></td>
+        <td class="desc-text">Tool Use Agent：多轮调用，完成"识别 → 查重 → 写 Notion"完整链路</td>
+        <td><span class="tag auth">auth</span><span class="tag stream">stream</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/agent')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Stats -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/stats</code></td>
+        <td class="desc-text">Dashboard 统计数据：总数/分类/国家/作者/月度趋势/热力图</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/stats')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Daily Quote -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/daily-quote</code></td>
+        <td class="desc-text">AI 生成今日语录（中英双语），Demo 用户返回固定内容</td>
+        <td><span class="tag auth">auth</span><span class="tag demo">demo</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/daily-quote')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Media proxies -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/images?url=<span class="param">...</span></code></td>
+        <td class="desc-text">图片代理：绕过 CORS，从第三方源取图片返回给前端</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/images')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/images/proxy</code></td>
+        <td class="desc-text">图片代理（备用路径，与上面功能相同）</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/images/proxy')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/music?url=<span class="param">...</span></code></td>
+        <td class="desc-text">音乐代理：为书籍匹配背景音乐，绕过 CORS 限制</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/music')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/videos</code></td>
+        <td class="desc-text">视频内容代理</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/videos')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Translate -->
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/translate-quotes</code></td>
+        <td class="desc-text">批量翻译语录（中→英 或 英→中）</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/translate-quotes')" title="复制 URL">⎘</button></td>
+      </tr>
+      <tr>
+        <td><span class="method POST">POST</span></td>
+        <td><code class="path-code">/api/translate-term</code></td>
+        <td class="desc-text">翻译单个词条（Dashboard 词云标签用）</td>
+        <td><span class="tag auth">auth</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/translate-term')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Auth -->
+      <tr>
+        <td><span class="method ANY">ANY</span></td>
+        <td><code class="path-code">/api/auth/<span class="param">[...nextauth]</span></code></td>
+        <td class="desc-text">NextAuth.js OAuth 处理（Google 登录回调、Session、CSRF）</td>
+        <td><span class="tag public">public</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/auth/signin')" title="复制 URL">⎘</button></td>
+      </tr>
+
+      <!-- Health -->
+      <tr>
+        <td><span class="method GET">GET</span></td>
+        <td><code class="path-code">/api/health</code></td>
+        <td class="desc-text">健康检查：验证环境变量是否完整，Vercel 监控用</td>
+        <td><span class="tag public">public</span></td>
+        <td><button class="copy-btn" onclick="copyUrl('/api/health')" title="复制 URL">⎘</button></td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- ── Footer note ── -->
+  <p style="margin-top:32px; font-size:12px; color:var(--cement); text-align:center">
+    修改顶部 BASE URL 后，点击 ⎘ 按钮复制完整 URL · 点击页面卡片直接在浏览器打开
+  </p>
+
+</div>
+
+<script>
+  function getBase() {
+    return document.getElementById('baseUrl').value.replace(/\/$/, '');
+  }
+
+  function openPage(path) {
+    window.open(getBase() + path, '_blank');
+  }
+
+  function copyUrl(path) {
+    const full = getBase() + path;
+    navigator.clipboard.writeText(full).then(() => {
+      // brief toast feedback
+      const toast = document.createElement('div');
+      toast.textContent = '已复制 ' + full;
+      Object.assign(toast.style, {
+        position:'fixed', bottom:'32px', left:'50%', transform:'translateX(-50%)',
+        background:'#222', color:'#fff', padding:'10px 20px',
+        borderRadius:'9999px', fontSize:'13px', zIndex:'9999',
+        boxShadow:'0 4px 16px rgba(0,0,0,.2)', pointerEvents:'none',
+      });
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lovely Shelf — App Showcase</title>
+<style>
+  /* ── Real design tokens from globals.css ── */
+  :root {
+    --shelf-50:  #fdf8f0;
+    --shelf-100: #faefd9;
+    --shelf-200: #f5d9a8;
+    --shelf-300: #efc070;
+    --shelf-400: #e8a040;
+    --shelf-500: #d97706;
+    --shelf-600: #b45309;
+    --shelf-700: #92400e;
+    --ink:       #1c1917;
+    --ink-muted: #78716c;
+    --ink-light: #a8a29e;
+    --white:     #ffffff;
+    --stone-100: #f5f5f4;
+    --stone-200: #e7e5e4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #e5e7eb;
+    min-height: 100vh;
+  }
+
+  /* ── Page switcher ── */
+  .switcher {
+    background: #1c1917;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .switcher-label { color: #a8a29e; font-size: 12px; margin-right: 8px; }
+  .sw-btn {
+    background: #292524;
+    color: #a8a29e;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 9999px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .sw-btn.active { background: #d97706; color: white; }
+  .sw-btn:hover:not(.active) { background: #3c3836; color: white; }
+
+  /* ── Phone frame ── */
+  .frame-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 48px;
+  }
+  .phone {
+    width: 390px;
+    background: var(--shelf-50);
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,.30), 0 8px 24px rgba(0,0,0,.15), inset 0 0 0 1px rgba(255,255,255,.1);
+    min-height: 844px;
+    position: relative;
+  }
+
+  /* ── Pages ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── NavBar ── */
+  .navbar {
+    background: var(--white);
+    border-bottom: 1px solid #f5f5f4;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .logo-box {
+    width: 32px; height: 32px;
+    background: var(--shelf-500);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(217,119,6,.3);
+  }
+  .logo-text { font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -.3px; }
+  .nav-items { display: flex; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: 10px;
+    font-size: 12px; font-weight: 500; color: var(--ink-muted);
+    cursor: pointer; border: none; background: none;
+    transition: background .1s;
+  }
+  .nav-item.active { background: var(--shelf-100); color: var(--shelf-700); }
+  .nav-right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .user-pill {
+    background: var(--shelf-100); color: var(--shelf-700);
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 9999px;
+  }
+  .lang-btn {
+    width: 36px; height: 32px;
+    border: 1px solid var(--stone-200);
+    border-radius: 10px; background: none;
+    font-size: 12px; font-weight: 500; color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  /* ── Widget Card ── */
+  .card {
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    margin-bottom: 16px;
+  }
+
+  /* ── Dashboard ── */
+  .dash-main { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .hero {
+    background: linear-gradient(135deg, #d97706, #92400e);
+    border-radius: 24px;
+    padding: 24px;
+    color: white;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(217,119,6,.4);
+  }
+  .hero-count { font-size: 64px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+  .hero-label { color: rgba(255,255,255,.8); font-size: 15px; }
+  .hero-sub { color: rgba(255,255,255,.7); font-size: 12px; margin-bottom: 4px; }
+  .hero-pill {
+    background: rgba(255,255,255,.2);
+    border-radius: 9999px; padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  /* ── Donut chart (SVG) ── */
+  .donut-wrap { display: flex; align-items: center; gap: 16px; }
+  .legend-list { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-pct { color: var(--ink-muted); margin-left: auto; font-size: 11px; }
+
+  /* ── Top genres ── */
+  .top-genre-item {
+    background: var(--shelf-50);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .top-genre-item:last-child { margin-bottom: 0; }
+  .tg-count { font-size: 22px; font-weight: 900; color: var(--shelf-600); line-height: 1; }
+  .tg-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .tg-pct { font-size: 11px; color: var(--ink-muted); }
+
+  /* ── Word cloud ── */
+  .word-cloud {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    min-height: 100px;
+    justify-content: center;
+  }
+  .word { font-weight: 700; cursor: default; line-height: 1.2; }
+
+  /* ── Bar chart ── */
+  .bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 100px; padding-top: 8px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .bar { width: 100%; background: #6366f1; border-radius: 5px 5px 0 0; transition: opacity .15s; }
+  .bar-label { font-size: 9px; color: var(--ink-light); }
+
+  /* ── Heatmap ── */
+  .heatmap { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; }
+  .hm-cell { aspect-ratio: 1; border-radius: 3px; }
+
+  /* ── Countries ── */
+  .country-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .country-chip {
+    background: var(--shelf-50);
+    color: var(--ink);
+    font-size: 12px;
+    padding: 5px 10px; border-radius: 9999px;
+  }
+  .country-chip strong { color: var(--shelf-600); }
+
+  /* ── Recent books ── */
+  .recent-books { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .recent-books::-webkit-scrollbar { display: none; }
+  .book-thumb { flex-shrink: 0; width: 72px; }
+  .book-cover {
+    width: 72px; height: 96px;
+    border-radius: 10px;
+    overflow: hidden; margin-bottom: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+  .book-title { font-size: 11px; font-weight: 500; color: var(--ink); line-height: 1.3; }
+  .book-author { font-size: 10px; color: var(--ink-muted); margin-top: 1px; }
+
+  /* ── Upload page ── */
+  .upload-main { padding: 16px; }
+  .upload-hero {
+    text-align: center; padding: 24px 16px 20px;
+  }
+  .upload-hero h1 { font-size: 22px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+  .upload-hero p { font-size: 13px; color: var(--ink-muted); }
+  .drop-zone {
+    border: 2px dashed var(--shelf-300);
+    border-radius: 24px;
+    padding: 40px 20px;
+    text-align: center;
+    background: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(217,119,6,.04) 8px, rgba(217,119,6,.04) 16px);
+    cursor: pointer;
+    transition: border-color .15s;
+    margin-bottom: 16px;
+  }
+  .drop-zone .dz-icon { font-size: 48px; margin-bottom: 12px; }
+  .drop-zone h2 { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .drop-zone p { font-size: 13px; color: var(--ink-muted); }
+  .upload-btn {
+    width: 100%;
+    background: var(--shelf-500);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(217,119,6,.35);
+  }
+  .tips { margin-top: 16px; }
+  .tip-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 12px;
+    background: var(--white); margin-bottom: 8px;
+    font-size: 13px; color: var(--ink-muted);
+  }
+  .tip-item span:first-child { font-size: 18px; }
+
+  /* ── Chat page ── */
+  .chat-layout { display: flex; flex-direction: column; height: calc(100% - 58px); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .chat-messages::-webkit-scrollbar { display: none; }
+  .msg-row { display: flex; gap: 8px; align-items: flex-end; }
+  .msg-row.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+    background: var(--shelf-100);
+  }
+  .bubble {
+    max-width: 72%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 13px; line-height: 1.5;
+  }
+  .bubble.ai { background: var(--white); color: var(--ink); border-radius: 4px 18px 18px 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .bubble.user { background: var(--shelf-500); color: white; border-radius: 18px 18px 4px 18px; }
+  .tool-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--shelf-50); border: 1px solid var(--shelf-200);
+    color: var(--shelf-600); font-size: 11px; font-weight: 500;
+    padding: 3px 9px; border-radius: 9999px; margin-bottom: 6px;
+  }
+  .book-result-card {
+    background: var(--shelf-50);
+    border: 1px solid var(--shelf-200);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex; gap: 10px;
+    margin-top: 8px;
+  }
+  .brc-cover {
+    width: 48px; height: 64px; border-radius: 8px;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .brc-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .brc-author { font-size: 11px; color: var(--ink-muted); margin-bottom: 6px; }
+  .brc-badge {
+    display: inline-block; background: var(--shelf-100);
+    color: var(--shelf-700); font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 9999px;
+  }
+  .streaming-cursor {
+    display: inline-block; width: 2px; height: 14px;
+    background: var(--shelf-500); margin-left: 2px; vertical-align: middle;
+    animation: blink .8s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .hint-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .hint-chip {
+    background: var(--white); border: 1px solid var(--stone-200);
+    color: var(--ink); font-size: 12px;
+    padding: 6px 12px; border-radius: 9999px;
+    cursor: pointer;
+  }
+  .chat-input-area {
+    padding: 12px 16px;
+    background: var(--white);
+    border-top: 1px solid #f5f5f4;
+  }
+  .chat-input-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--shelf-50);
+    border: 1px solid var(--stone-200);
+    border-radius: 9999px;
+    padding: 8px 8px 8px 16px;
+  }
+  .chat-input-pill input {
+    flex: 1; border: none; background: none;
+    font-size: 14px; color: var(--ink); outline: none;
+  }
+  .send-orb {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--shelf-500); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; flex-shrink: 0;
+  }
+
+  /* ── Quotes page ── */
+  .quotes-main { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .book-filter { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .book-filter::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 6px 14px; border-radius: 9999px;
+    font-size: 12px; font-weight: 500;
+    border: none; cursor: pointer;
+  }
+  .filter-chip.active { background: var(--shelf-500); color: white; }
+  .filter-chip:not(.active) { background: var(--white); color: var(--ink-muted); border: 1px solid var(--stone-200); }
+  .quote-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+  .quote-mark { font-size: 28px; color: var(--shelf-300); line-height: 1; margin-bottom: 4px; font-family: Georgia, serif; }
+  .quote-text { font-size: 14px; color: var(--ink); line-height: 1.6; margin-bottom: 10px; }
+  .quote-source { font-size: 11px; color: var(--ink-muted); display: flex; align-items: center; gap: 5px; }
+  .quote-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .qbtn {
+    flex: 1; padding: 7px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; border: none; cursor: pointer;
+  }
+  .qbtn.primary { background: var(--shelf-100); color: var(--shelf-700); }
+  .qbtn.secondary { background: var(--stone-100); color: var(--ink-muted); }
+</style>
+</head>
+<body>
+
+<!-- ── Page switcher ── -->
+<div class="switcher">
+  <span class="switcher-label">📚 Lovely Shelf</span>
+  <button class="sw-btn active" onclick="showPage('upload', this)">📤 Upload</button>
+  <button class="sw-btn" onclick="showPage('dashboard', this)">📊 Dashboard</button>
+  <button class="sw-btn" onclick="showPage('chat', this)">💬 Chat</button>
+  <button class="sw-btn" onclick="showPage('quotes', this)">✨ Quotes</button>
+</div>
+
+<div class="frame-wrap">
+<div class="phone" id="phone">
+
+<!-- ════════════════════════════════════
+     PAGE: DASHBOARD
+════════════════════════════════════ -->
+<div class="page" id="page-dashboard">
+  <!-- NavBar -->
+  <div class="navbar">
+    <div class="logo-box">📚</div>
+    <span class="logo-text">lovely-shelf</span>
+    <div class="nav-items">
+      <button class="nav-item">📤 Upload</button>
+      <button class="nav-item active">📊 Shelf</button>
+      <button class="nav-item">💬 Chat</button>
+      <button class="nav-item">✨ Quotes</button>
+    </div>
+    <div class="nav-right">
+      <span class="user-pill">👤 Sarah</span>
+      <button class="lang-btn">EN</button>
+    </div>
+  </div>
+
+  <div class="dash-main">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div>
+        <p style="color:rgba(255,255,255,.7);font-size:12px;margin-bottom:4px">My Bookshelf</p>
+        <p class="hero-count">32</p>
+        <p class="hero-label">books</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;text-align:right">
+        <span class="hero-pill">2026: 18 books</span>
+        <span class="hero-pill">Fav · <strong>Fiction</strong></span>
+      </div>
+    </div>
+
+    <!-- Genre Chart + Top 3 -->
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px">
+
+      <!-- Donut -->
+      <div class="card">
+        <div class="card-title">📊 Genre Distribution</div>
+        <div class="donut-wrap">
+          <svg width="110" height="110" viewBox="0 0 110 110">
+            <!-- total circumference r=40: 251.3 -->
+            <!-- Fiction 44% = 110.6 -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#6366f1" stroke-width="18"
+              stroke-dasharray="110.6 140.7" stroke-dashoffset="0" transform="rotate(-90 55 55)"/>
+            <!-- Psychology 25% = 62.8, offset=-110.6 -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#8b5cf6" stroke-width="18"
+              stroke-dasharray="62.8 188.5" stroke-dashoffset="-113" transform="rotate(-90 55 55)"/>
+            <!-- Essays 16% = 40.2, offset=-173.4 -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#a78bfa" stroke-width="18"
+              stroke-dasharray="40.2 211.1" stroke-dashoffset="-178" transform="rotate(-90 55 55)"/>
+            <!-- History 9% = 22.6 -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#c4b5fd" stroke-width="18"
+              stroke-dasharray="22.6 228.7" stroke-dashoffset="-220" transform="rotate(-90 55 55)"/>
+            <!-- Philosophy 6% = 15.1 -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#818cf8" stroke-width="18"
+              stroke-dasharray="15.1 236.2" stroke-dashoffset="-245" transform="rotate(-90 55 55)"/>
+            <!-- center hole -->
+            <circle cx="55" cy="55" r="28" fill="#ffffff"/>
+            <text x="55" y="51" text-anchor="middle" font-size="16" font-weight="900" fill="#1c1917">32</text>
+            <text x="55" y="63" text-anchor="middle" font-size="9" fill="#78716c">books</text>
+          </svg>
+          <div class="legend-list">
+            <div class="legend-item"><span class="legend-dot" style="background:#6366f1"></span>Fiction<span class="legend-pct">44%</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Psychology<span class="legend-pct">25%</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#a78bfa"></span>Essays<span class="legend-pct">16%</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#c4b5fd"></span>History<span class="legend-pct">9%</span></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#818cf8"></span>Philosophy<span class="legend-pct">6%</span></div>
+          </div>
+        </div>
+        <p style="font-size:10px;color:var(--ink-light);text-align:center;margin-top:10px">Click a slice to view books</p>
+      </div>
+
+      <!-- Top 3 -->
+      <div class="card">
+        <div class="card-title">🏆 Top Genres</div>
+        <div class="top-genre-item">
+          <span style="font-size:22px">🥇</span>
+          <div>
+            <div class="tg-count">14</div>
+            <div class="tg-name">Fiction</div>
+            <div class="tg-pct">44%</div>
+          </div>
+        </div>
+        <div class="top-genre-item">
+          <span style="font-size:22px">🥈</span>
+          <div>
+            <div class="tg-count">8</div>
+            <div class="tg-name">Psychology</div>
+            <div class="tg-pct">25%</div>
+          </div>
+        </div>
+        <div class="top-genre-item">
+          <span style="font-size:22px">🥉</span>
+          <div>
+            <div class="tg-count">5</div>
+            <div class="tg-name">Essays</div>
+            <div class="tg-pct">16%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Word Cloud -->
+    <div class="card">
+      <div class="card-title">☁️ Word Cloud</div>
+      <div class="word-cloud">
+        <span class="word" style="font-size:22px;color:#6366f1">Fiction</span>
+        <span class="word" style="font-size:18px;color:#8b5cf6">Psychology</span>
+        <span class="word" style="font-size:15px;color:#a78bfa">Essays</span>
+        <span class="word" style="font-size:22px;color:#059669">Japan</span>
+        <span class="word" style="font-size:18px;color:#10b981">China</span>
+        <span class="word" style="font-size:14px;color:#34d399">France</span>
+        <span class="word" style="font-size:20px;color:#d97706">Murakami</span>
+        <span class="word" style="font-size:16px;color:#f59e0b">Yu Hua</span>
+        <span class="word" style="font-size:16px;color:#fb923c">Dazai</span>
+        <span class="word" style="font-size:13px;color:#6366f1">History</span>
+        <span class="word" style="font-size:14px;color:#059669">USA</span>
+        <span class="word" style="font-size:12px;color:#d97706">Camus</span>
+        <span class="word" style="font-size:13px;color:#8b5cf6">Philosophy</span>
+        <span class="word" style="font-size:12px;color:#10b981">Germany</span>
+        <span class="word" style="font-size:12px;color:#ea580c">Thoreau</span>
+      </div>
+    </div>
+
+    <!-- Monthly Bar + Heatmap -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card">
+        <div class="card-title">📈 2026 Trend</div>
+        <div class="bar-chart">
+          <div class="bar-col"><div class="bar" style="height:48px"></div><span class="bar-label">Jan</span></div>
+          <div class="bar-col"><div class="bar" style="height:32px"></div><span class="bar-label">Feb</span></div>
+          <div class="bar-col"><div class="bar" style="height:64px"></div><span class="bar-label">Mar</span></div>
+          <div class="bar-col"><div class="bar" style="height:80px"></div><span class="bar-label">Apr</span></div>
+          <div class="bar-col"><div class="bar" style="height:64px"></div><span class="bar-label">May</span></div>
+          <div class="bar-col"><div class="bar" style="height:4px;opacity:.3"></div><span class="bar-label">Jun</span></div>
+          <div class="bar-col"><div class="bar" style="height:4px;opacity:.3"></div><span class="bar-label">Jul</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🗓 Last 30 Days</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;font-size:10px;color:var(--ink-muted)">
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:#f5f5f4;border-radius:3px;display:inline-block"></span>0</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:#efc070;border-radius:3px;display:inline-block"></span>1</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:12px;height:12px;background:#b45309;border-radius:3px;display:inline-block"></span>2+</span>
+        </div>
+        <div class="heatmap">
+          <!-- 30 cells, some active -->
+          <div class="hm-cell" style="background:#efc070" title="May 1: 1"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#b45309" title="2"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#b45309"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#b45309"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#b45309"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+          <div class="hm-cell" style="background:#efc070"></div>
+          <div class="hm-cell" style="background:#b45309"></div>
+          <div class="hm-cell" style="background:#f5f5f4"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countries + Recent -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card">
+        <div class="card-title">🌍 Author Countries</div>
+        <div class="country-chips">
+          <span class="country-chip">Japan <strong>10</strong></span>
+          <span class="country-chip">China <strong>8</strong></span>
+          <span class="country-chip">France <strong>5</strong></span>
+          <span class="country-chip">USA <strong>4</strong></span>
+          <span class="country-chip">Germany <strong>2</strong></span>
+          <span class="country-chip">Colombia <strong>2</strong></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🆕 Recent</div>
+        <div class="recent-books">
+          <div class="book-thumb">
+            <div class="book-cover" style="background:#6366f1">📖</div>
+            <div class="book-title">Norwegian Wood</div>
+            <div class="book-author">Murakami</div>
+          </div>
+          <div class="book-thumb">
+            <div class="book-cover" style="background:#8b5cf6">📚</div>
+            <div class="book-title">To Live</div>
+            <div class="book-author">Yu Hua</div>
+          </div>
+          <div class="book-thumb">
+            <div class="book-cover" style="background:#d97706">🌸</div>
+            <div class="book-title">No Longer Human</div>
+            <div class="book-author">Dazai</div>
+          </div>
+          <div class="book-thumb">
+            <div class="book-cover" style="background:#059669">🌿</div>
+            <div class="book-title">The Stranger</div>
+            <div class="book-author">Camus</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dash-main -->
+</div><!-- /page-dashboard -->
+
+
+<!-- ════════════════════════════════════
+     PAGE: UPLOAD
+════════════════════════════════════ -->
+<div class="page active" id="page-upload">
+  <div class="navbar">
+    <div class="logo-box">📚</div>
+    <span class="logo-text">lovely-shelf</span>
+    <div class="nav-items">
+      <button class="nav-item active">📤 Upload</button>
+      <button class="nav-item">📊 Shelf</button>
+      <button class="nav-item">💬 Chat</button>
+      <button class="nav-item">✨ Quotes</button>
+    </div>
+    <div class="nav-right"><button class="lang-btn">EN</button></div>
+  </div>
+
+  <div class="upload-main">
+    <div class="upload-hero">
+      <h1>Scan Your Book</h1>
+      <p>Take a photo or upload a cover — AI will recognize it</p>
+    </div>
+
+    <div class="drop-zone">
+      <div class="dz-icon">📷</div>
+      <h2>Drop a photo here</h2>
+      <p>or click to choose from camera / library</p>
+      <p style="font-size:11px;color:var(--ink-light);margin-top:8px">JPG · PNG · HEIC supported</p>
+    </div>
+
+    <button class="upload-btn">📤 Upload & Recognize</button>
+
+    <div class="tips">
+      <div class="tip-item"><span>💡</span><span>Lay the book flat for best results</span></div>
+      <div class="tip-item"><span>🌟</span><span>Front cover only — no need to show the spine</span></div>
+      <div class="tip-item"><span>⚡</span><span>AI recognition takes about 3–5 seconds</span></div>
+      <div class="tip-item"><span>📦</span><span>Upload up to 5 books at once</span></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     PAGE: CHAT
+════════════════════════════════════ -->
+<div class="page" id="page-chat">
+  <div class="navbar">
+    <div class="logo-box">📚</div>
+    <span class="logo-text">lovely-shelf</span>
+    <div class="nav-items">
+      <button class="nav-item">📤 Upload</button>
+      <button class="nav-item">📊 Shelf</button>
+      <button class="nav-item active">💬 Chat</button>
+      <button class="nav-item">✨ Quotes</button>
+    </div>
+    <div class="nav-right"><button class="lang-btn">EN</button></div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;min-height:calc(844px - 58px)">
+    <div class="chat-messages" style="flex:1;padding-bottom:0">
+
+      <!-- Greeting -->
+      <div style="text-align:center;padding:20px 10px 12px">
+        <div style="font-size:36px;margin-bottom:8px">🤖</div>
+        <p style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px">Hello, Sarah!</p>
+        <p style="font-size:13px;color:var(--ink-muted)">Ask me anything about your books</p>
+        <div class="hint-chips" style="justify-content:center;margin-top:12px">
+          <span class="hint-chip">📖 Recommend similar books</span>
+          <span class="hint-chip">✨ Add this book</span>
+          <span class="hint-chip">📊 What's in my shelf?</span>
+        </div>
+      </div>
+
+      <!-- User message -->
+      <div class="msg-row user">
+        <div class="bubble user">I just took a photo of a book — can you add it?</div>
+        <div class="avatar" style="background:var(--shelf-100)">👤</div>
+      </div>
+
+      <!-- AI message with tool chip -->
+      <div class="msg-row">
+        <div class="avatar">🤖</div>
+        <div>
+          <span class="tool-chip">🔍 recognize_book</span><br/>
+          <span class="tool-chip">✅ create_book_page</span>
+          <div class="bubble ai">
+            Got it! I've recognized and added this book to your shelf:
+            <div class="book-result-card">
+              <div class="brc-cover" style="background:#6366f1">📗</div>
+              <div>
+                <div class="brc-title">Norwegian Wood</div>
+                <div class="brc-author">Haruki Murakami · Japan</div>
+                <span class="brc-badge">Fiction</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User message 2 -->
+      <div class="msg-row user">
+        <div class="bubble user">Recommend something similar</div>
+        <div class="avatar" style="background:var(--shelf-100)">👤</div>
+      </div>
+
+      <!-- AI streaming -->
+      <div class="msg-row">
+        <div class="avatar">🤖</div>
+        <div class="bubble ai">
+          Based on your taste for Japanese literary fiction, you might enjoy <strong>Kafka on the Shore</strong> — also by Murakami, with the same dreamlike quality<span class="streaming-cursor"></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input-area">
+      <div class="chat-input-pill">
+        <input type="text" placeholder="Ask about your books…" readonly />
+        <button class="send-orb">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     PAGE: QUOTES
+════════════════════════════════════ -->
+<div class="page" id="page-quotes">
+  <div class="navbar">
+    <div class="logo-box">📚</div>
+    <span class="logo-text">lovely-shelf</span>
+    <div class="nav-items">
+      <button class="nav-item">📤 Upload</button>
+      <button class="nav-item">📊 Shelf</button>
+      <button class="nav-item">💬 Chat</button>
+      <button class="nav-item active">✨ Quotes</button>
+    </div>
+    <div class="nav-right"><button class="lang-btn">EN</button></div>
+  </div>
+
+  <div class="quotes-main">
+
+    <!-- Book filter -->
+    <div class="book-filter">
+      <button class="filter-chip active">All Books</button>
+      <button class="filter-chip">Norwegian Wood</button>
+      <button class="filter-chip">To Live</button>
+      <button class="filter-chip">The Stranger</button>
+      <button class="filter-chip">Kafka on Shore</button>
+    </div>
+
+    <!-- Quote cards -->
+    <div class="quote-card">
+      <div class="quote-mark">"</div>
+      <div class="quote-text">If you only read the books that everyone else is reading, you can only think what everyone else is thinking.</div>
+      <div class="quote-source">📗 Norwegian Wood · Haruki Murakami</div>
+      <div class="quote-actions">
+        <button class="qbtn primary">🎨 Make Card</button>
+        <button class="qbtn secondary">♡ Like</button>
+        <button class="qbtn secondary">✏️ Edit</button>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="quote-mark">"</div>
+      <div class="quote-text">To live — that's what we do. It is not suffering that kills, but the loss of reasons to live.</div>
+      <div class="quote-source">📘 To Live · Yu Hua</div>
+      <div class="quote-actions">
+        <button class="qbtn primary">🎨 Make Card</button>
+        <button class="qbtn secondary">♡ Like</button>
+        <button class="qbtn secondary">✏️ Edit</button>
+      </div>
+    </div>
+
+    <div class="quote-card">
+      <div class="quote-mark">"</div>
+      <div class="quote-text">Mother died today. Or maybe yesterday; I can't be sure.</div>
+      <div class="quote-source">📙 The Stranger · Albert Camus</div>
+      <div class="quote-actions">
+        <button class="qbtn primary">🎨 Make Card</button>
+        <button class="qbtn secondary">♡ Like</button>
+        <button class="qbtn secondary">✏️ Edit</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /phone -->
+</div><!-- /frame-wrap -->
+
+<script>
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.sw-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  var phone = document.querySelector('.phone');
+  if (phone) phone.scrollTop = 0;
+}
+</script>
+</body>
+</html>
