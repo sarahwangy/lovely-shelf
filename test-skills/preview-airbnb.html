@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lovely Shelf × Airbnb Design</title>
+<style>
+  /* ── Airbnb Design Tokens ── */
+  :root {
+    --primary:        #ff385c;
+    --primary-active: #e00b41;
+    --primary-dim:    #ffd1da;
+    --ink:            #222222;
+    --body:           #3f3f3f;
+    --muted:          #6a6a6a;
+    --muted-soft:     #929292;
+    --hairline:       #dddddd;
+    --hairline-soft:  #ebebeb;
+    --canvas:         #ffffff;
+    --surface-soft:   #f7f7f7;
+    --surface-strong: #f2f2f2;
+    --shadow-card: rgba(0,0,0,0.02) 0 0 0 1px,
+                   rgba(0,0,0,0.04) 0 2px 6px,
+                   rgba(0,0,0,0.10) 0 4px 8px;
+    --font: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --r-sm:   8px;
+    --r-md:   14px;
+    --r-lg:   20px;
+    --r-xl:   32px;
+    --r-full: 9999px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--surface-soft); color: var(--ink); }
+
+  /* ── Section Labels ── */
+  .section-label {
+    background: var(--ink); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 6px 16px; display: inline-block;
+  }
+  .section-wrapper { margin: 32px auto; max-width: 1280px; padding: 0 24px; }
+  .section-caption {
+    font-size: 12px; color: var(--muted); margin-bottom: 16px; padding-left: 2px;
+    font-weight: 500;
+  }
+
+  /* ══════════════════════════════════
+     1. TOP NAV
+  ══════════════════════════════════ */
+  .top-nav {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+    height: 80px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-logo {
+    color: var(--primary); font-size: 22px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px; text-decoration: none;
+  }
+  .nav-logo svg { width: 28px; height: 28px; fill: var(--primary); }
+  .nav-tabs { display: flex; gap: 0; align-items: flex-end; height: 80px; }
+  .nav-tab {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 16px; height: 100%;
+    justify-content: center; cursor: pointer; position: relative;
+    font-size: 14px; font-weight: 600; color: var(--muted); gap: 4px;
+    border: none; background: none; transition: color .15s;
+  }
+  .nav-tab.active { color: var(--ink); }
+  .nav-tab.active::after {
+    content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+    height: 2px; background: var(--ink); border-radius: 2px 2px 0 0;
+  }
+  .nav-tab-icon { font-size: 22px; line-height: 1; }
+  .nav-tab-badge {
+    font-size: 8px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+    background: var(--ink); color: #fff; padding: 2px 5px;
+    border-radius: var(--r-full); line-height: 1.3; margin-left: 4px;
+  }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+  .nav-host-btn {
+    font-size: 14px; font-weight: 600; color: var(--ink); padding: 10px 16px;
+    border: none; background: none; cursor: pointer; border-radius: var(--r-full);
+    transition: background .15s;
+  }
+  .nav-host-btn:hover { background: var(--surface-soft); }
+  .nav-account {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--hairline); border-radius: var(--r-full);
+    padding: 6px 8px 6px 12px; cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    background: var(--canvas); transition: box-shadow .15s;
+  }
+  .nav-account:hover { box-shadow: var(--shadow-card); }
+  .nav-hamburger { font-size: 16px; color: var(--ink); }
+  .nav-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff385c, #e00b41);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+  }
+
+  /* ══════════════════════════════════
+     2. SEARCH BAR (HOME / UPLOAD PAGE)
+  ══════════════════════════════════ */
+  .hero-section {
+    background: var(--canvas); padding: 48px 40px 56px;
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+  .hero-eyebrow {
+    font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .hero-title { font-size: 28px; font-weight: 700; color: var(--ink); margin-bottom: 32px; }
+  .hero-title span { color: var(--primary); }
+
+  .search-pill {
+    display: flex; align-items: center;
+    background: var(--canvas); border-radius: var(--r-full);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-card);
+    height: 64px; max-width: 860px;
+    overflow: hidden;
+  }
+  .search-segment {
+    flex: 1; padding: 10px 24px; border-right: 1px solid var(--hairline);
+    cursor: pointer; transition: background .12s;
+  }
+  .search-segment:hover { background: var(--surface-soft); }
+  .search-segment:last-of-type { border-right: none; }
+  .search-segment-label { font-size: 11px; font-weight: 700; color: var(--ink); display: block; margin-bottom: 2px; }
+  .search-segment-value { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .search-orb {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 8px; cursor: pointer; flex-shrink: 0;
+    font-size: 18px; transition: background .15s;
+    box-shadow: 0 2px 8px rgba(255,56,92,.35);
+  }
+  .search-orb:hover { background: var(--primary-active); }
+
+  /* ══════════════════════════════════
+     3. UPLOAD DROP ZONE
+  ══════════════════════════════════ */
+  .upload-section { background: var(--canvas); padding: 0 40px 64px; }
+  .upload-heading {
+    font-size: 22px; font-weight: 600; color: var(--ink);
+    padding: 40px 0 24px; letter-spacing: -.3px;
+  }
+  .drop-zone {
+    border: 2px dashed var(--hairline);
+    border-radius: var(--r-lg);
+    padding: 64px 40px; text-align: center;
+    background: var(--surface-soft);
+    cursor: pointer; transition: border-color .15s, background .15s;
+    max-width: 700px;
+  }
+  .drop-zone:hover { border-color: var(--ink); background: var(--canvas); }
+  .drop-icon { font-size: 40px; margin-bottom: 16px; color: var(--muted); }
+  .drop-title { font-size: 18px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+  .drop-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+  .btn-primary {
+    background: var(--primary); color: #fff;
+    font-size: 16px; font-weight: 500; border: none;
+    padding: 14px 24px; height: 48px; border-radius: var(--r-sm);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    transition: background .15s;
+  }
+  .btn-primary:hover { background: var(--primary-active); }
+  .btn-secondary {
+    background: var(--canvas); color: var(--ink);
+    font-size: 16px; font-weight: 500;
+    border: 1px solid var(--ink);
+    padding: 13px 23px; height: 48px; border-radius: var(--r-sm);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    transition: background .15s;
+  }
+  .btn-secondary:hover { background: var(--surface-soft); }
+
+  /* Processing items */
+  .processing-list { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; max-width: 700px; }
+  .process-item {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--canvas); border: 1px solid var(--hairline);
+    border-radius: var(--r-md); padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .process-thumb {
+    width: 52px; height: 52px; border-radius: var(--r-sm);
+    object-fit: cover; flex-shrink: 0;
+    background: var(--surface-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .process-info { flex: 1; }
+  .process-name { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .process-status { font-size: 13px; color: var(--muted); }
+  .process-status.success { color: #008a05; }
+  .process-status.processing { color: var(--primary); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--hairline); flex-shrink: 0;
+  }
+  .status-dot.success { background: #008a05; }
+  .status-dot.processing { background: var(--primary); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ══════════════════════════════════
+     4. CATEGORY STRIP
+  ══════════════════════════════════ */
+  .category-strip {
+    background: var(--canvas); border-bottom: 1px solid var(--hairline);
+    padding: 0 40px; display: flex; gap: 0; overflow-x: auto;
+  }
+  .cat-tab {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 20px; cursor: pointer; flex-shrink: 0;
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    border-bottom: 2px solid transparent; transition: all .15s;
+    white-space: nowrap;
+  }
+  .cat-tab:hover { color: var(--ink); }
+  .cat-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .cat-icon { font-size: 22px; }
+
+  /* ══════════════════════════════════
+     5. BOOK CARDS GRID (Dashboard)
+  ══════════════════════════════════ */
+  .cards-section { background: var(--canvas); padding: 32px 40px 64px; }
+  .cards-heading {
+    font-size: 22px; font-weight: 600; letter-spacing: -.3px;
+    color: var(--ink); margin-bottom: 24px;
+  }
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .book-card { cursor: pointer; }
+  .book-card:hover .card-photo { transform: scale(1.03); }
+  .card-photo-wrapper {
+    border-radius: var(--r-md); overflow: hidden;
+    aspect-ratio: 3/4; position: relative; background: var(--surface-strong);
+    margin-bottom: 10px;
+  }
+  .card-photo {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform .25s ease;
+    display: block;
+  }
+  .card-photo-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; transition: transform .25s ease;
+  }
+  .card-badge {
+    position: absolute; top: 10px; left: 10px;
+    background: var(--canvas); border-radius: var(--r-full);
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    box-shadow: var(--shadow-card); color: var(--ink);
+  }
+  .card-heart {
+    position: absolute; top: 10px; right: 10px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,.85); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; transition: background .15s;
+  }
+  .card-heart.saved { color: var(--primary); }
+  .card-heart:hover { background: var(--canvas); }
+  .card-meta { padding: 0 2px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-author { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+  .card-row { display: flex; align-items: center; justify-content: space-between; }
+  .card-genre {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface-strong); padding: 3px 10px; border-radius: var(--r-full);
+  }
+  .card-rating { font-size: 14px; font-weight: 500; color: var(--ink); display: flex; align-items: center; gap: 3px; }
+  .card-star { color: var(--ink); font-size: 13px; }
+  .card-status-badge {
+    font-size: 11px; font-weight: 600; padding: 3px 8px;
+    border-radius: var(--r-full); background: var(--surface-strong); color: var(--muted);
+  }
+  .card-status-badge.reading { background: #fff4e5; color: #c96a00; }
+  .card-status-badge.done { background: #e8f5e9; color: #2e7d32; }
+
+  /* ══════════════════════════════════
+     6. STATS BAND (Dashboard)
+  ══════════════════════════════════ */
+  .stats-band {
+    background: var(--canvas); padding: 48px 40px;
+    border-top: 1px solid var(--hairline-soft);
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+  .stats-heading { font-size: 22px; font-weight: 600; color: var(--ink); margin-bottom: 32px; letter-spacing: -.3px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 24px; }
+  .stat-card {
+    border: 1px solid var(--hairline); border-radius: var(--r-md);
+    padding: 24px; background: var(--canvas);
+    transition: box-shadow .15s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-card); }
+  .stat-number { font-size: 48px; font-weight: 700; color: var(--ink); line-height: 1; margin-bottom: 6px; }
+  .stat-label { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .stat-sublabel { font-size: 12px; color: var(--muted-soft); margin-top: 4px; }
+
+  /* ══════════════════════════════════
+     7. BOOK DETAIL MODAL
+  ══════════════════════════════════ */
+  .modal-overlay {
+    background: rgba(0,0,0,.5); padding: 20px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 600px;
+  }
+  .modal {
+    background: var(--canvas); border-radius: var(--r-lg);
+    width: 100%; max-width: 880px; overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,.25);
+  }
+  .modal-header {
+    padding: 20px 24px 0;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--hairline-soft);
+    padding-bottom: 20px;
+  }
+  .modal-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface-strong); border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: var(--ink);
+  }
+  .modal-close:hover { background: var(--hairline); }
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--ink); }
+  .modal-body { display: grid; grid-template-columns: 280px 1fr; }
+  .modal-cover {
+    padding: 24px; border-right: 1px solid var(--hairline-soft);
+  }
+  .modal-cover-img {
+    width: 100%; aspect-ratio: 3/4; border-radius: var(--r-md);
+    background: linear-gradient(135deg, #ffe0e6 0%, #ffd1da 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 72px; margin-bottom: 16px;
+  }
+  .modal-rating-display {
+    font-size: 52px; font-weight: 700; color: var(--ink);
+    display: flex; align-items: center; gap: 8px; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .modal-rating-stars { display: flex; gap: 2px; }
+  .modal-rating-star { color: var(--ink); font-size: 14px; }
+  .modal-rating-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .modal-details { padding: 24px; }
+  .modal-book-title { font-size: 22px; font-weight: 600; color: var(--ink); margin-bottom: 6px; letter-spacing: -.3px; }
+  .modal-book-author { font-size: 16px; color: var(--muted); margin-bottom: 20px; }
+  .amenity-list { border-top: 1px solid var(--hairline-soft); }
+  .amenity-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--hairline-soft);
+    font-size: 16px; color: var(--ink);
+  }
+  .amenity-icon { font-size: 20px; width: 24px; flex-shrink: 0; }
+  .amenity-label { flex: 1; }
+  .amenity-value { font-size: 14px; color: var(--muted); }
+  .modal-actions { padding: 20px 24px; border-top: 1px solid var(--hairline-soft); display: flex; gap: 12px; }
+
+  /* ══════════════════════════════════
+     8. FOOTER
+  ══════════════════════════════════ */
+  .footer {
+    background: var(--canvas); border-top: 1px solid var(--hairline);
+    padding: 48px 40px;
+  }
+  .footer-cols { display: grid; grid-template-columns: repeat(3,1fr); gap: 40px; margin-bottom: 32px; }
+  .footer-col-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 16px; }
+  .footer-link {
+    display: block; font-size: 14px; color: var(--ink); text-decoration: none;
+    margin-bottom: 10px; transition: text-decoration .1s;
+  }
+  .footer-link:hover { text-decoration: underline; }
+  .legal-band {
+    border-top: 1px solid var(--hairline); padding-top: 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; color: var(--muted);
+  }
+  .legal-links { display: flex; gap: 16px; }
+  .legal-link { color: var(--muted); text-decoration: none; }
+  .legal-link:hover { text-decoration: underline; }
+
+  /* Page dividers */
+  .page-divider {
+    background: var(--surface-soft); padding: 16px 40px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .page-divider-line { flex: 1; height: 1px; background: var(--hairline); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     NAV BAR
+═══════════════════════════════════════════ -->
+<div class="section-wrapper">
+  <div class="section-label">导航栏</div>
+  <p class="section-caption" style="margin-top:8px">白色底 · 80px 高 · 居中产品 tab · 右侧账户胶囊</p>
+</div>
+
+<nav class="top-nav">
+  <a class="nav-logo" href="#">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 1C8.268 1 2 7.268 2 15c0 4.2 1.822 7.978 4.73 10.6L16 31l9.27-5.4C28.178 22.978 30 19.2 30 15 30 7.268 23.732 1 16 1zm0 5c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5zm0 20.5c-3.14 0-5.938-1.446-7.8-3.7C9.68 20.376 12.658 19 16 19s6.32 1.376 7.8 3.8c-1.862 2.254-4.66 3.7-7.8 3.7z"/>
+    </svg>
+    lovely shelf
+  </a>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active">
+      <span class="nav-tab-icon">📚</span>
+      <span>我的书架</span>
+    </button>
+    <button class="nav-tab">
+      <span class="nav-tab-icon">💬</span>
+      <span>AI 聊书</span>
+    </button>
+    <button class="nav-tab">
+      <span class="nav-tab-icon">✨</span>
+      <span style="display:flex;align-items:center;gap:4px">语录 <span class="nav-tab-badge">NEW</span></span>
+    </button>
+  </div>
+
+  <div class="nav-right">
+    <button class="nav-host-btn">上传书籍</button>
+    <div class="nav-account">
+      <span class="nav-hamburger">☰</span>
+      <div class="nav-avatar">S</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HERO + SEARCH BAR (Upload Page)
+═══════════════════════════════════════════ -->
+<div class="section-wrapper" style="margin-top:40px">
+  <div class="section-label">上传页 Hero</div>
+  <p class="section-caption" style="margin-top:8px">胶囊搜索栏 · 珊瑚红搜索球 · 留白驱动的层级感</p>
+</div>
+
+<div class="hero-section">
+  <div class="hero-eyebrow">Lovely Shelf</div>
+  <h1 class="hero-title">你的书架，<span>你的故事</span></h1>
+
+  <div class="search-pill">
+    <div class="search-segment">
+      <span class="search-segment-label">书名 / 作者</span>
+      <span class="search-segment-value">搜索你想添加的书...</span>
+    </div>
+    <div class="search-segment">
+      <span class="search-segment-label">分类</span>
+      <span class="search-segment-value">所有类型</span>
+    </div>
+    <div class="search-segment">
+      <span class="search-segment-label">状态</span>
+      <span class="search-segment-value">全部</span>
+    </div>
+    <div class="search-orb">🔍</div>
+  </div>
+</div>
+
+<!-- Upload Drop Zone -->
+<div class="upload-section">
+  <h2 class="upload-heading">拍照上传书籍</h2>
+  <div class="drop-zone">
+    <div class="drop-icon">📷</div>
+    <div class="drop-title">拖拽书籍照片到这里</div>
+    <div class="drop-sub">支持 JPG、PNG、HEIC · 每次最多 20 张</div>
+    <button class="btn-primary">选择照片</button>
+  </div>
+
+  <!-- Processing list -->
+  <div class="processing-list">
+    <div class="process-item">
+      <div class="process-thumb" style="background:#ffd1da">📗</div>
+      <div class="process-info">
+        <div class="process-name">IMG_0421.JPG</div>
+        <div class="process-status success">✓ 识别成功 · 《人类简史》</div>
+      </div>
+      <div class="status-dot success"></div>
+    </div>
+    <div class="process-item">
+      <div class="process-thumb" style="background:#e8f0ff">📘</div>
+      <div class="process-info">
+        <div class="process-name">IMG_0422.JPG</div>
+        <div class="process-status processing">正在识别中...</div>
+      </div>
+      <div class="status-dot processing"></div>
+    </div>
+    <div class="process-item">
+      <div class="process-thumb" style="background:#f2f2f2">📙</div>
+      <div class="process-info">
+        <div class="process-name">IMG_0423.HEIC</div>
+        <div class="process-status">等待处理</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     CATEGORY STRIP + BOOK CARDS (Dashboard)
+═══════════════════════════════════════════ -->
+<div class="section-wrapper" style="margin-top:48px">
+  <div class="section-label">书架页 Dashboard</div>
+  <p class="section-caption" style="margin-top:8px">分类横条 + 照片优先书籍卡片网格 · 4 列 · 14px 圆角</p>
+</div>
+
+<div class="category-strip">
+  <div class="cat-tab active"><span class="cat-icon">📚</span>全部</div>
+  <div class="cat-tab"><span class="cat-icon">🧬</span>科学</div>
+  <div class="cat-tab"><span class="cat-icon">🏛️</span>历史</div>
+  <div class="cat-tab"><span class="cat-icon">💡</span>哲学</div>
+  <div class="cat-tab"><span class="cat-icon">💼</span>商业</div>
+  <div class="cat-tab"><span class="cat-icon">🎨</span>文学</div>
+  <div class="cat-tab"><span class="cat-icon">🔬</span>心理</div>
+</div>
+
+<div class="cards-section">
+  <h2 class="cards-heading">我的书架 · 24 本</h2>
+  <div class="cards-grid">
+
+    <!-- Card 1 -->
+    <div class="book-card">
+      <div class="card-photo-wrapper">
+        <div class="card-photo-placeholder" style="background:linear-gradient(135deg,#ffd1da,#ff9eb5)">📕</div>
+        <div class="card-badge">⭐ Guest Favorite</div>
+        <div class="card-heart saved">♥</div>
+      </div>
+      <div class="card-meta">
+        <div class="card-title">人类简史</div>
+        <div class="card-author">尤瓦尔·赫拉利</div>
+        <div class="card-row">
+          <span class="card-genre">历史</span>
+          <span class="card-status-badge done">已读完</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="book-card">
+      <div class="card-photo-wrapper">
+        <div class="card-photo-placeholder" style="background:linear-gradient(135deg,#d1e8ff,#93c5fd)">📘</div>
+        <div class="card-heart">♡</div>
+      </div>
+      <div class="card-meta">
+        <div class="card-title">思考，快与慢</div>
+        <div class="card-author">丹尼尔·卡尼曼</div>
+        <div class="card-row">
+          <span class="card-genre">心理</span>
+          <span class="card-status-badge reading">阅读中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="book-card">
+      <div class="card-photo-wrapper">
+        <div class="card-photo-placeholder" style="background:linear-gradient(135deg,#d1fae5,#6ee7b7)">📗</div>
+        <div class="card-heart">♡</div>
+      </div>
+      <div class="card-meta">
+        <div class="card-title">Being You</div>
+        <div class="card-author">Anil Seth</div>
+        <div class="card-row">
+          <span class="card-genre">科学</span>
+          <span class="card-status-badge reading">阅读中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="book-card">
+      <div class="card-photo-wrapper">
+        <div class="card-photo-placeholder" style="background:linear-gradient(135deg,#fef3c7,#fcd34d)">📙</div>
+        <div class="card-badge">新加入</div>
+        <div class="card-heart">♡</div>
+      </div>
+      <div class="card-meta">
+        <div class="card-title">原则</div>
+        <div class="card-author">瑞·达利欧</div>
+        <div class="card-row">
+          <span class="card-genre">商业</span>
+          <span class="card-status-badge">想读</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     STATS BAND
+═══════════════════════════════════════════ -->
+<div class="section-wrapper">
+  <div class="section-label">统计卡片</div>
+  <p class="section-caption" style="margin-top:8px">64px 大数字 · 1px 边框卡片 · hover 浮起阴影</p>
+</div>
+
+<div class="stats-band">
+  <h2 class="stats-heading">我的阅读数据</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--primary)">24</div>
+      <div class="stat-label">书架总藏书</div>
+      <div class="stat-sublabel">较上月 +3</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">18</div>
+      <div class="stat-label">已读完</div>
+      <div class="stat-sublabel">完成率 75%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">4</div>
+      <div class="stat-label">阅读中</div>
+      <div class="stat-sublabel">本月新开</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">7</div>
+      <div class="stat-label">涉及类型</div>
+      <div class="stat-sublabel">最多：历史 8 本</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     BOOK DETAIL MODAL
+═══════════════════════════════════════════ -->
+<div class="section-wrapper" style="margin-top:48px">
+  <div class="section-label">书籍详情弹窗</div>
+  <p class="section-caption" style="margin-top:8px">左侧封面 + 64px 评分大字 · 右侧 amenity 行 · 底部双按钮</p>
+</div>
+
+<div class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <button class="modal-close">✕</button>
+      <span class="modal-title">书籍详情</span>
+      <button class="modal-close">✏️</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Left: cover + rating -->
+      <div class="modal-cover">
+        <div class="modal-cover-img">📗</div>
+        <div class="modal-rating-display">
+          <span>4.9</span>
+        </div>
+        <div class="modal-rating-stars">
+          <span class="modal-rating-star">★</span>
+          <span class="modal-rating-star">★</span>
+          <span class="modal-rating-star">★</span>
+          <span class="modal-rating-star">★</span>
+          <span class="modal-rating-star">★</span>
+        </div>
+        <div class="modal-rating-label">个人评分</div>
+      </div>
+
+      <!-- Right: details -->
+      <div class="modal-details">
+        <div class="modal-book-title">人类简史：从动物到上帝</div>
+        <div class="modal-book-author">尤瓦尔·诺亚·赫拉利</div>
+
+        <div class="amenity-list">
+          <div class="amenity-row">
+            <span class="amenity-icon">📂</span>
+            <span class="amenity-label">分类</span>
+            <span class="amenity-value">历史 · 人类学</span>
+          </div>
+          <div class="amenity-row">
+            <span class="amenity-icon">🌍</span>
+            <span class="amenity-label">作者国籍</span>
+            <span class="amenity-value">以色列</span>
+          </div>
+          <div class="amenity-row">
+            <span class="amenity-icon">🔖</span>
+            <span class="amenity-label">阅读状态</span>
+            <span class="amenity-value" style="color:#2e7d32;font-weight:600">✓ 已读完</span>
+          </div>
+          <div class="amenity-row">
+            <span class="amenity-icon">📅</span>
+            <span class="amenity-label">加入时间</span>
+            <span class="amenity-value">2026年5月18日</span>
+          </div>
+          <div class="amenity-row">
+            <span class="amenity-icon">🔗</span>
+            <span class="amenity-label">Notion 页面</span>
+            <span class="amenity-value" style="color:#428bff">查看 →</span>
+          </div>
+          <div class="amenity-row">
+            <span class="amenity-icon">💬</span>
+            <span class="amenity-label">笔记 / 语录</span>
+            <span class="amenity-value">12 条语录</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" style="flex:1">去聊这本书</button>
+      <button class="btn-primary" style="flex:1">保存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     BUTTON PALETTE
+═══════════════════════════════════════════ -->
+<div class="section-wrapper" style="margin-top:48px">
+  <div class="section-label">按钮色板</div>
+</div>
+<div style="background:var(--canvas);padding:40px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--hairline-soft)">
+  <button class="btn-primary">主按钮 Reserve</button>
+  <button class="btn-secondary">次按钮 Save</button>
+  <button style="background:var(--primary);color:#fff;border:none;padding:10px 20px;border-radius:9999px;font-size:14px;font-weight:500;cursor:pointer">胶囊按钮 · pill</button>
+  <button style="background:var(--primary-dim);color:#fff;border:none;padding:14px 24px;height:48px;border-radius:8px;font-size:16px;font-weight:500;cursor:not-allowed">禁用状态</button>
+  <div class="search-orb" style="margin:0">🔍</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-cols">
+    <div>
+      <div class="footer-col-title">支持</div>
+      <a class="footer-link" href="#">使用帮助</a>
+      <a class="footer-link" href="#">问题反馈</a>
+      <a class="footer-link" href="#">隐私设置</a>
+    </div>
+    <div>
+      <div class="footer-col-title">功能</div>
+      <a class="footer-link" href="#">AI 书籍识别</a>
+      <a class="footer-link" href="#">语录卡片</a>
+      <a class="footer-link" href="#">Notion 同步</a>
+      <a class="footer-link" href="#">统计仪表盘</a>
+    </div>
+    <div>
+      <div class="footer-col-title">关于</div>
+      <a class="footer-link" href="#">Lovely Shelf</a>
+      <a class="footer-link" href="#">更新日志</a>
+      <a class="footer-link" href="#">开源许可</a>
+    </div>
+  </div>
+  <div class="legal-band">
+    <span>© 2026 Lovely Shelf · 用 ❤️ 和 Claude 构建</span>
+    <div class="legal-links">
+      <a class="legal-link" href="#">隐私政策</a>
+      <a class="legal-link" href="#">服务条款</a>
+      <a class="legal-link" href="#">🌐 中文 (简体)</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
