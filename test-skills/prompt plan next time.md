@@ -163,6 +163,23 @@ npx skills add vercel-labs/agent-skills
 
 ---
 
+## `claude plugin install` vs `npx skills add` 的区别
+
+两者是不同层面的工具：
+
+| | `claude plugin install` | `npx skills add` |
+|---|---|---|
+| 作用范围 | 全局（所有项目） | 单个项目 |
+| 存放位置 | `~/.claude/` | `.claude/skills/` |
+| 能安装什么 | skill + MCP + agent + hook | 只有 skill |
+| 团队共享 | 不能（本地） | 可以（commit 进 git） |
+
+**使用建议：**
+- 想让**整个团队**都能用某个 skill → 用 `npx skills add` 并 commit 进项目
+- 只是**自己**用 → `claude plugin install` 更方便
+
+---
+
 ## graphify 知识图谱的置信度分布
 
 graphify 提取代码关系时，每条边都有置信度评分（confidence_score）。规则是：明确从代码里提取出来的关系（EXTRACTED）固定为 1.0；推断出来的关系（INFERRED）只能从五个离散值中选一个：0.95 / 0.85 / 0.75 / 0.65 / 0.55，不能用 0.5，也不能用其他数值。这是为了对抗实际观察到的"双峰分布"现象——模型在连续范围里打分时，超过 50% 会堆在 0.5，超过 40% 会堆在 0.85 以上，导致分布像两个峰而不是均匀的高斯分布。用离散档位强制模型做出明确判断，而不是躲在模糊的中间值里。
