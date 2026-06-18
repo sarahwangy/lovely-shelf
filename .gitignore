@@ -50,3 +50,5 @@ next-env.d.ts
 graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 !graphify-out/README.md
+.claude/
+.vscode/
