@@ -17,9 +17,9 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // 服务端和客户端都先用 "zh"，避免 hydration 不匹配
+  // 服务端和客户端都先用 "en"，避免 hydration 不匹配
   // mount 之后再从 localStorage 读实际存储的语言
-  const [lang, setLang] = useState<Language>("zh");
+  const [lang, setLang] = useState<Language>("en");
 
   useEffect(() => {
     const stored = localStorage.getItem("lovely-shelf-lang");
