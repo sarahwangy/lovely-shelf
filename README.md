@@ -4,6 +4,12 @@
 
 > Point your camera at a book cover. Watch it land in Notion.
 
+## Why I Built This
+
+I keep a Notion database of books I've read, but manually entering titles, authors, and quotes was tedious. I wanted to point my phone at a book cover and have everything fill in automatically — cover photo, metadata, and a few memorable quotes. Lovely Shelf does exactly that.
+
+---
+
 lovely-shelf turns book cover photos into a fully-tagged Notion library. Upload an image, and Claude AI extracts the title, author, genre, country of origin, and a few memorable quotes — then writes everything into your Notion database in one shot, deduplicated, with the cover attached.
 
 **[Try the live demo →](https://lovely-shelf.vercel.app)** — click **一键体验 Demo**, no account needed.
@@ -12,26 +18,15 @@ lovely-shelf turns book cover photos into a fully-tagged Notion library. Upload 
 
 ## How it works
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         UPLOAD FLOW                             │
-│                                                                 │
-│  📸 Photo    ──►  Preprocess  ──►  Claude AI  ──►  Notion      │
-│  (any size)       (sharp)          (vision)        (write)      │
-│                                                                 │
-│  Step 1: Resize to ≤1200px, convert to JPEG (server-side)      │
-│                                                                 │
-│  Step 2: Claude reads the cover image and returns:             │
-│          { title, subtitle, author, gender, country,           │
-│            genres[], description, quotes[] }                    │
-│                                                                 │
-│  Step 3: Check Notion — does this title+author already exist?  │
-│          YES → return existing page URL (no duplicate)         │
-│          NO  → upload cover + create new Notion page           │
-│                                                                 │
-│  Step 4: Count books in same genre → show achievement badge    │
-│          Fetch 5 similar books → show recommendation row       │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["📸 Photo (any size)"] --> B["Preprocess\n(sharp)\nResize to ≤1200px, convert to JPEG"]
+    B --> C["Claude AI (vision)\nReturns: title, subtitle, author,\ngender, country, genres[],\ndescription, quotes[]"]
+    C --> D{"Duplicate check\nDoes title+author\nalready exist in Notion?"}
+    D -- YES --> E["Return existing page URL\n(no duplicate created)"]
+    D -- NO --> F["Upload cover + create\nnew Notion page"]
+    F --> G["Count books in same genre\n→ show achievement badge"]
+    G --> H["Fetch 5 similar books\n→ show recommendation row"]
 ```
 
 ---
