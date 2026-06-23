@@ -4,7 +4,7 @@
 
 > Point your camera at a book cover. Watch it land in Notion.
 
-![lovely-shelf demo](./assets/lovely-shelf.gif)
+![lovely-shelf demo](./assets/lovely-shelf-showcase.gif)
 
 ## Why I Built This
 
