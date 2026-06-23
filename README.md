@@ -4,6 +4,8 @@
 
 > Point your camera at a book cover. Watch it land in Notion.
 
+![lovely-shelf demo](./assets/lovely-shelf.gif)
+
 ## Why I Built This
 
 I keep a Notion database of books I've read, but manually entering titles, authors, and quotes was tedious. I wanted to point my phone at a book cover and have everything fill in automatically — cover photo, metadata, and a few memorable quotes. Lovely Shelf does exactly that.
@@ -34,6 +36,9 @@ flowchart TD
 ## Features
 
 ### 📤 Upload & Recognize
+
+![Upload page — drag a book cover photo, Claude identifies it in seconds](./assets/lovely-shelf-upload.png)
+
 - Drag-and-drop or tap-to-upload, process multiple covers at once
 - HEIC/HEIF support (iPhone native format) with three-tier conversion:
   `libheif-js (WebAssembly) → heic2any → Canvas API`
@@ -41,6 +46,9 @@ flowchart TD
 - After a successful add: genre achievement badge ("your 14th 小说!") + horizontal scroll of similar books from your library
 
 ### 📊 Dashboard
+
+![Dashboard — genre breakdown, word cloud, activity heatmap, recent adds](./assets/lovely-shelf-dashboard.png)
+
 ```
 ┌────────────────────────────────────────┐
 │  Your Library                          │
@@ -60,6 +68,9 @@ flowchart TD
 - Tap any book thumbnail to open a full detail modal (live-fetched from Notion)
 
 ### 💬 Quote Library
+
+![Quote Library — every quote Claude extracted, filterable by tab](./assets/lovely-shelf-quote.png)
+
 - Every quote Claude extracted from every book, paginated 10 per page
 - Four tabs: **全部** (all) · **手写** (handwritten) · **书库语录** (from books) · **已收藏** (liked)
 - ❤️ Like quotes; likes persist in `localStorage`
@@ -87,6 +98,9 @@ flowchart TD
 - Styles persist in `localStorage` per quote
 
 ### 🤖 AI Chat
+
+![AI Chat — streaming responses, Claude knows your entire shelf](./assets/lovely-shelf-chat.png)
+
 - Streaming chat (Server-Sent Events) with a Claude assistant that knows your library
 - Can recognize a book cover you upload mid-conversation
 - Can surface quotes, list books by genre, and answer questions about your shelf
