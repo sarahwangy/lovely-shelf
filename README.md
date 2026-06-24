@@ -14,7 +14,7 @@ I keep a Notion database of books I've read, but manually entering titles, autho
 
 lovely-shelf turns book cover photos into a fully-tagged Notion library. Upload an image, and Claude AI extracts the title, author, genre, country of origin, and a few memorable quotes — then writes everything into your Notion database in one shot, deduplicated, with the cover attached.
 
-**[Try the live demo →](https://lovely-shelf.vercel.app)** — click **一键体验 Demo**, no account needed.
+**[Try the live demo →](https://lovely-shelf.vercel.app)** — click **一键体验 Demo**, no account needed.\
 📝 **Read the story**: [I Vibe-Coded a Full-Stack AI App in 7 Days as a Beginner](https://medium.com/p/b444005fcea9)
 
 ---
