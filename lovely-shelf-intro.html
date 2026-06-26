@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lovely Shelf — Introduction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   FIXED 16:9 STAGE — viewport-base.css
+   =========================================== */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0F0F0F; }
+.deck-viewport { position:fixed; inset:0; overflow:hidden; background:#0F0F0F; }
+.deck-stage {
+  position:absolute; left:0; top:0;
+  width:1920px; height:1080px;
+  overflow:hidden; transform-origin:0 0;
+}
+.slide {
+  position:absolute; inset:0;
+  width:1920px; height:1080px; overflow:hidden;
+  visibility:hidden; opacity:0; pointer-events:none;
+}
+.slide.active, .slide.visible {
+  visibility:visible; opacity:1; pointer-events:auto; z-index:1;
+}
+img,video,canvas,svg { max-width:100%; max-height:100%; }
+@media print {
+  html,body { width:1920px; height:auto; overflow:visible; }
+  .deck-viewport { position:static; overflow:visible; }
+  .deck-stage { position:static; width:auto; height:auto; transform:none!important; }
+  .slide { position:relative; display:block!important; visibility:visible!important;
+           opacity:1!important; pointer-events:auto!important;
+           width:1920px; height:1080px; break-after:page; page-break-after:always; }
+  .slide:last-child { break-after:auto; page-break-after:auto; }
+  .deck-controls { display:none!important; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation-duration:0.01ms!important; transition-duration:0.2s!important; }
+}
+
+/* ===========================================
+   CREATIVE MODE THEME
+   =========================================== */
+:root {
+  --cream:   #EFE9D9;
+  --cream-2: #E4DCC4;
+  --ink:     #0F0F0F;
+  --ink-2:   #2A2A2A;
+  --green:   #1F8A4C;
+  --green-dark: #136636;
+  --pink:    #F06CA8;
+  --pink-dark: #D14E8B;
+  --orange:  #E85A1F;
+  --yellow:  #F5C518;
+
+  --font-display: "Archivo Black", "Noto Serif SC", sans-serif;
+  --font-body:    "Space Grotesk", "Noto Serif SC", sans-serif;
+  --font-mono:    "JetBrains Mono", monospace;
+  --ease-expo: cubic-bezier(0.16,1,0.3,1);
+}
+
+/* ===========================================
+   CANVAS
+   =========================================== */
+.canvas { position:absolute; inset:0; background:var(--cream); }
+.canvas-green { position:absolute; inset:0; background:var(--green); }
+
+/* ===========================================
+   CHROME FRAME (all slides)
+   topbar: top 48px, left/right 64px
+   meta: bottom 40px, left/right 64px
+   =========================================== */
+.topbar {
+  position:absolute; top:48px; left:64px; right:64px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--font-mono); font-size:24px;
+  letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--ink);
+}
+.topbar-light { color:var(--cream); }
+.topbar-pill {
+  border:2px solid var(--ink); border-radius:999px;
+  padding:6px 20px; font-size:22px; letter-spacing:0.08em;
+}
+.topbar-pill-light {
+  border-color:var(--cream); color:var(--cream);
+}
+.slide-meta {
+  position:absolute; bottom:40px; left:64px; right:64px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--font-mono); font-size:24px;
+  letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--ink);
+}
+.slide-meta-light { color:rgba(239,233,217,0.6); }
+.meta-dot {
+  width:10px; height:10px; background:var(--ink);
+  border-radius:50%; display:inline-block; margin:0 12px;
+}
+.meta-dot-light { background:var(--cream); opacity:0.5; }
+
+/* ===========================================
+   TYPOGRAPHY
+   =========================================== */
+.d-jumbo {
+  font-family:var(--font-display); font-size:220px; font-weight:400;
+  line-height:0.92; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.d-hero {
+  font-family:var(--font-display); font-size:160px; font-weight:400;
+  line-height:0.92; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.d-xl {
+  font-family:var(--font-display); font-size:140px; font-weight:400;
+  line-height:0.92; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.d-lg {
+  font-family:var(--font-display); font-size:100px; font-weight:400;
+  line-height:0.92; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.d-md {
+  font-family:var(--font-display); font-size:84px; font-weight:400;
+  line-height:0.92; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.d-sm {
+  font-family:var(--font-display); font-size:72px; font-weight:400;
+  line-height:0.95; letter-spacing:-0.01em; text-transform:uppercase;
+}
+.step-num {
+  font-family:var(--font-display); font-size:140px; font-weight:400;
+  line-height:0.85; text-transform:uppercase;
+}
+.stat-num-type {
+  font-family:var(--font-display); font-size:96px; font-weight:400;
+  line-height:0.9;
+}
+.body-lg {
+  font-family:var(--font-body); font-size:28px;
+  font-weight:400; line-height:1.5;
+}
+.body-md {
+  font-family:var(--font-body); font-size:24px;
+  font-weight:400; line-height:1.4;
+}
+.mono-kicker {
+  font-family:var(--font-mono); font-size:24px;
+  letter-spacing:0.14em; text-transform:uppercase;
+}
+.kicker-block {
+  display:inline-block; background:var(--ink); color:var(--cream);
+  font-family:var(--font-mono); font-size:22px;
+  letter-spacing:0.14em; text-transform:uppercase;
+  padding:8px 18px;
+}
+
+/* ===========================================
+   STRUCTURAL ELEMENTS
+   =========================================== */
+.ink-border { border:4px solid var(--ink); }
+.ink-border-3 { border:3px solid var(--ink); }
+
+.stat-cell {
+  border:4px solid var(--ink); padding:28px 32px;
+}
+.cell-cream { background:var(--cream); color:var(--ink); }
+.cell-green { background:var(--green); color:var(--cream); }
+.cell-pink  { background:var(--pink);  color:var(--ink); }
+.cell-orange{ background:var(--orange);color:var(--cream); }
+.cell-yellow{ background:var(--yellow);color:var(--ink); }
+.cell-ink   { background:var(--ink);   color:var(--cream); }
+
+/* Hard offset shadow — featured block */
+.shadow-hero {
+  box-shadow: 24px 24px 0 var(--orange), 24px 24px 0 4px var(--ink);
+}
+.shadow-hero-pink {
+  box-shadow: 24px 24px 0 var(--pink), 24px 24px 0 4px var(--ink);
+}
+.shadow-hero-yellow {
+  box-shadow: 24px 24px 0 var(--yellow), 24px 24px 0 4px var(--ink);
+}
+/* Medium offset shadow */
+.shadow-md { box-shadow: 18px 18px 0 var(--ink); }
+
+/* Step card */
+.step-card {
+  border:4px solid var(--ink); padding:28px;
+}
+
+/* Step arrow */
+.step-arrow {
+  width:0; height:0;
+  border-top:18px solid transparent;
+  border-bottom:18px solid transparent;
+  border-left:24px solid var(--ink);
+  align-self:center; flex-shrink:0;
+}
+
+/* Rotated badge */
+.badge-rotated {
+  background:var(--yellow); border:4px solid var(--ink);
+  font-family:var(--font-display); font-size:28px;
+  text-transform:uppercase; padding:10px 20px;
+  transform:rotate(-4deg); display:inline-block;
+}
+
+/* Screenshot frame */
+.screenshot-frame {
+  border:4px solid var(--ink);
+  overflow:hidden;
+  box-shadow:18px 18px 0 var(--ink);
+}
+.screenshot-frame img {
+  display:block; width:100%; height:100%; object-fit:cover; object-position:top;
+}
+
+/* ===========================================
+   REVEAL ANIMATIONS
+   =========================================== */
+.reveal {
+  opacity:0; transform:translateY(20px);
+  transition:opacity 0.6s var(--ease-expo), transform 0.6s var(--ease-expo);
+}
+.slide.visible .reveal { opacity:1; transform:translateY(0); }
+.slide.visible .reveal.d1 { transition-delay:0.05s; }
+.slide.visible .reveal.d2 { transition-delay:0.15s; }
+.slide.visible .reveal.d3 { transition-delay:0.25s; }
+.slide.visible .reveal.d4 { transition-delay:0.35s; }
+.slide.visible .reveal.d5 { transition-delay:0.45s; }
+.reveal-left {
+  opacity:0; transform:translateX(-30px);
+  transition:opacity 0.6s var(--ease-expo), transform 0.6s var(--ease-expo);
+}
+.slide.visible .reveal-left { opacity:1; transform:translateX(0); }
+.slide.visible .reveal-left.d2 { transition-delay:0.15s; }
+.slide.visible .reveal-left.d3 { transition-delay:0.25s; }
+.slide.visible .reveal-left.d4 { transition-delay:0.35s; }
+
+/* ===========================================
+   SLIDE 1 — TITLE
+   =========================================== */
+#slide-1 .hero-block {
+  position:absolute; left:96px; top:130px;
+  width:900px;
+  border:4px solid var(--ink);
+  padding:56px 60px 56px 60px;
+  background:var(--cream);
+}
+#slide-1 .right-stamp {
+  position:absolute; right:96px; top:120px;
+  width:680px;
+}
+#slide-1 .tagline-card {
+  border:4px solid var(--ink); padding:44px 48px;
+  background:var(--pink);
+  box-shadow:24px 24px 0 var(--orange), 24px 24px 0 4px var(--ink);
+  margin-bottom:0;
+}
+#slide-1 .stat-row {
+  display:flex; margin-top:28px; gap:0;
+}
+#slide-1 .mini-stat {
+  flex:1; border:4px solid var(--ink); padding:28px 24px;
+  border-left:none;
+}
+#slide-1 .mini-stat:first-child { border-left:4px solid var(--ink); }
+
+/* ===========================================
+   SLIDE 2 — THE PROBLEM
+   =========================================== */
+#slide-2 .left-col {
+  position:absolute; left:96px; top:130px; width:760px;
+}
+#slide-2 .right-col {
+  position:absolute; right:96px; top:130px; width:860px;
+  display:flex; flex-direction:column; gap:0;
+}
+.problem-row {
+  display:flex; border:4px solid var(--ink); border-bottom:none;
+  background:var(--cream);
+}
+.problem-row:last-child { border-bottom:4px solid var(--ink); }
+.problem-num {
+  font-family:var(--font-display); font-size:64px; font-weight:400;
+  line-height:1; text-transform:uppercase;
+  min-width:120px; padding:28px 24px;
+  border-right:4px solid var(--ink);
+  display:flex; align-items:center; justify-content:center;
+}
+.problem-text { padding:28px 32px; }
+.problem-title {
+  font-family:var(--font-display); font-size:32px; text-transform:uppercase;
+  margin-bottom:10px;
+}
+.problem-body { font-family:var(--font-body); font-size:22px; color:var(--ink-2); line-height:1.5; }
+
+/* ===========================================
+   SLIDE 3 — HOW IT WORKS
+   =========================================== */
+#slide-3 .flow-row {
+  position:absolute; left:96px; right:96px; top:175px;
+  display:flex; align-items:stretch; gap:0;
+}
+.flow-card {
+  flex:1; border:4px solid var(--ink); padding:44px 36px;
+  position:relative;
+}
+.flow-card + .flow-card { border-left:none; }
+.flow-num {
+  font-family:var(--font-display); font-size:100px; font-weight:400;
+  line-height:0.85; opacity:0.18; position:absolute; top:20px; right:24px;
+}
+.flow-icon { font-size:56px; margin-bottom:24px; line-height:1; }
+.flow-title {
+  font-family:var(--font-display); font-size:34px; text-transform:uppercase;
+  margin-bottom:20px; line-height:1;
+}
+.flow-body { font-family:var(--font-body); font-size:22px; color:var(--ink-2); line-height:1.55; }
+#slide-3 .result-bar {
+  position:absolute; left:96px; right:96px; bottom:90px;
+  border:4px solid var(--ink); background:var(--green);
+  padding:24px 40px;
+  display:flex; align-items:center; gap:32px;
+}
+.result-bar-text {
+  font-family:var(--font-display); font-size:34px; text-transform:uppercase;
+  color:var(--cream);
+}
+
+/* ===========================================
+   SLIDE 4 — UPLOAD & RECOGNIZE
+   =========================================== */
+#slide-4 .text-col {
+  position:absolute; left:96px; top:130px; width:680px;
+}
+#slide-4 .img-col {
+  position:absolute; right:80px; top:110px; bottom:90px; left:840px;
+}
+#slide-4 .img-col .screenshot-frame { width:100%; height:100%; }
+#slide-4 .feature-list { margin-top:40px; display:flex; flex-direction:column; gap:0; }
+.feature-item {
+  border:4px solid var(--ink); border-bottom:none;
+  padding:20px 28px; display:flex; align-items:center; gap:20px;
+  background:var(--cream);
+}
+.feature-item:last-child { border-bottom:4px solid var(--ink); }
+.feature-item .fi-dot {
+  width:18px; height:18px; background:var(--pink); border:3px solid var(--ink);
+  flex-shrink:0;
+}
+.feature-item .fi-text { font-family:var(--font-body); font-size:22px; color:var(--ink); }
+
+/* ===========================================
+   SLIDE 5 — DASHBOARD
+   =========================================== */
+#slide-5 .img-col {
+  position:absolute; left:80px; top:110px; bottom:90px; width:980px;
+}
+#slide-5 .img-col .screenshot-frame { width:100%; height:100%; }
+#slide-5 .stat-col {
+  position:absolute; left:1120px; right:80px; top:130px;
+  display:flex; flex-direction:column; gap:0;
+}
+.dash-stat {
+  border:4px solid var(--ink); border-bottom:none; padding:32px 36px;
+}
+.dash-stat:last-child { border-bottom:4px solid var(--ink); }
+.dash-stat-num {
+  font-family:var(--font-display); font-size:80px; font-weight:400;
+  line-height:0.9; margin-bottom:12px;
+}
+.dash-stat-label {
+  font-family:var(--font-mono); font-size:20px;
+  letter-spacing:0.1em; text-transform:uppercase;
+}
+
+/* ===========================================
+   SLIDE 6 — QUOTE LIBRARY
+   =========================================== */
+#slide-6 .text-col {
+  position:absolute; left:96px; top:130px; width:660px;
+}
+#slide-6 .img-col {
+  position:absolute; right:80px; top:110px; bottom:90px; left:820px;
+}
+#slide-6 .img-col .screenshot-frame { width:100%; height:100%; }
+#slide-6 .tab-row {
+  margin-top:40px; display:flex; gap:0;
+}
+.tab-chip {
+  border:4px solid var(--ink); border-right:none;
+  padding:16px 28px; font-family:var(--font-mono);
+  font-size:20px; letter-spacing:0.1em; text-transform:uppercase;
+  background:var(--cream);
+}
+.tab-chip:last-child { border-right:4px solid var(--ink); }
+.tab-chip.active { background:var(--ink); color:var(--cream); }
+
+/* ===========================================
+   SLIDE 7 — QUOTE CARD STUDIO
+   =========================================== */
+#slide-7 .title-block {
+  position:absolute; left:96px; top:130px; width:860px;
+}
+#slide-7 .cards-grid {
+  position:absolute; right:96px; top:130px;
+  width:840px; display:grid; grid-template-columns:1fr 1fr; gap:0;
+}
+.studio-card {
+  border:4px solid var(--ink); border-right:none; border-bottom:none;
+  padding:40px 36px;
+}
+.studio-card:nth-child(2n) { border-right:4px solid var(--ink); }
+.studio-card:nth-child(3),
+.studio-card:nth-child(4) { border-bottom:4px solid var(--ink); }
+.studio-card .sc-icon { font-size:44px; margin-bottom:20px; line-height:1; }
+.studio-card .sc-title {
+  font-family:var(--font-display); font-size:30px; text-transform:uppercase;
+  margin-bottom:14px;
+}
+.studio-card .sc-body {
+  font-family:var(--font-body); font-size:20px; color:var(--ink-2); line-height:1.5;
+}
+
+/* ===========================================
+   SLIDE 8 — AI CHAT
+   =========================================== */
+#slide-8 .text-col {
+  position:absolute; left:96px; top:130px; width:700px;
+}
+#slide-8 .img-col {
+  position:absolute; right:80px; top:110px; bottom:90px; left:860px;
+}
+#slide-8 .img-col .screenshot-frame { width:100%; height:100%; }
+.chat-example {
+  border:4px solid var(--ink); padding:32px 36px; margin-top:40px;
+  background:var(--cream-2);
+}
+.chat-q {
+  font-family:var(--font-mono); font-size:20px; letter-spacing:0.06em;
+  color:var(--green); margin-bottom:16px;
+}
+.chat-a { font-family:var(--font-body); font-size:22px; color:var(--ink-2); line-height:1.5; }
+
+/* ===========================================
+   SLIDE 9 — TECH STACK
+   =========================================== */
+#slide-9 .title-block {
+  position:absolute; left:96px; top:130px; width:520px;
+}
+#slide-9 .tech-table {
+  position:absolute; left:680px; right:96px; top:130px;
+  border:4px solid var(--ink);
+}
+.tech-thead {
+  display:flex; background:var(--ink); color:var(--cream);
+}
+.tech-th {
+  flex:1; padding:18px 26px; font-family:var(--font-display);
+  font-size:26px; text-transform:uppercase;
+  border-right:3px solid var(--cream);
+}
+.tech-th:last-child { border-right:none; }
+.tech-row {
+  display:flex; border-top:3px solid var(--ink);
+}
+.tech-cell {
+  flex:1; padding:22px 26px; font-family:var(--font-body);
+  font-size:22px; border-right:3px solid var(--ink);
+  line-height:1.45;
+}
+.tech-cell:last-child { border-right:none; }
+.tech-cell.layer {
+  font-family:var(--font-mono); font-size:18px;
+  letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--ink-2);
+}
+.tech-row:nth-child(2n+1) .tech-cell { background:var(--cream-2); }
+.tech-cell.accent-green { background:var(--green); color:var(--cream); font-weight:500; }
+.tech-cell.accent-pink  { background:var(--pink);  color:var(--ink);   font-weight:500; }
+
+/* ===========================================
+   SLIDE 10 — CLOSING (GREEN)
+   =========================================== */
+#slide-10 .main-text {
+  position:absolute; left:96px; top:130px; right:520px;
+}
+#slide-10 .right-block {
+  position:absolute; right:96px; top:130px;
+  width:380px;
+}
+#slide-10 .url-card {
+  border:4px solid var(--cream); padding:44px 40px;
+  background:var(--green-dark);
+  box-shadow:24px 24px 0 var(--yellow), 24px 24px 0 4px var(--cream);
+  margin-bottom:28px;
+}
+#slide-10 .url-text {
+  font-family:var(--font-display); font-size:44px; text-transform:uppercase;
+  color:var(--yellow); line-height:1; letter-spacing:-0.01em;
+}
+#slide-10 .github-card {
+  border:4px solid rgba(239,233,217,0.4); padding:28px 32px;
+  background:rgba(239,233,217,0.08);
+}
+#slide-10 .github-text {
+  font-family:var(--font-mono); font-size:19px;
+  letter-spacing:0.06em; color:rgba(239,233,217,0.6);
+}
+/* Stamp decoration */
+#slide-10 .stamp {
+  position:absolute; right:520px; bottom:100px;
+  width:240px; height:240px;
+  background:var(--pink); border:4px solid var(--cream);
+  transform:rotate(-6deg);
+  display:flex; align-items:center; justify-content:center;
+}
+#slide-10 .stamp-inner {
+  width:190px; height:190px; border:4px solid var(--cream);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+#slide-10 .stamp-text {
+  font-family:var(--font-display); font-size:32px; text-transform:uppercase;
+  color:var(--cream); text-align:center; line-height:1.1;
+}
+
+/* ===========================================
+   SLIDE COUNTER
+   =========================================== */
+.slide-counter {
+  position:fixed; bottom:18px; left:50%;
+  transform:translateX(-50%); z-index:1000;
+  font-family:"JetBrains Mono",monospace; font-size:14px;
+  letter-spacing:0.12em; color:rgba(239,233,217,0.35);
+  user-select:none;
+}
+
+/* ===========================================
+   INLINE EDITOR
+   =========================================== */
+.edit-hotzone {
+  position:fixed; top:0; left:0; width:80px; height:80px;
+  z-index:10000; cursor:pointer;
+}
+.edit-toggle {
+  position:fixed; top:16px; left:16px; z-index:10001;
+  background:var(--pink); color:var(--ink);
+  border:3px solid var(--ink); padding:8px 18px;
+  font-family:"JetBrains Mono",monospace; font-size:13px;
+  letter-spacing:0.1em; text-transform:uppercase;
+  cursor:pointer; font-weight:700;
+  opacity:0; pointer-events:none; transition:opacity 0.3s;
+}
+.edit-toggle.show, .edit-toggle.active {
+  opacity:1; pointer-events:auto;
+}
+[contenteditable]:focus { outline:3px solid var(--pink); }
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ===================== SLIDE 1 — TITLE ===================== -->
+<section class="slide" id="slide-1">
+  <div class="canvas"></div>
+
+  <div class="topbar reveal d1">
+    <span>Lovely Shelf</span>
+    <span class="topbar-pill">AI Book Scanner</span>
+  </div>
+
+  <!-- Left hero block -->
+  <div class="hero-block reveal d2">
+    <div class="kicker-block" style="margin-bottom:36px;">📚 Your book library</div>
+    <div class="d-hero" style="color:var(--ink);">Lovely<br>Shelf</div>
+  </div>
+
+  <!-- Right: tagline + stats -->
+  <div class="right-stamp reveal d3">
+    <div class="tagline-card">
+      <div class="d-sm" style="color:var(--ink);">Point your camera.<br>Watch it land<br>in Notion.</div>
+    </div>
+    <div class="stat-row">
+      <div class="mini-stat cell-green">
+        <div class="stat-num-type" style="font-size:64px;">AI</div>
+        <div class="body-md" style="color:var(--cream);margin-top:8px;">Claude Vision</div>
+      </div>
+      <div class="mini-stat cell-cream">
+        <div class="stat-num-type" style="font-size:64px;">1s</div>
+        <div class="body-md" style="color:var(--ink-2);margin-top:8px;">Per book scan</div>
+      </div>
+      <div class="mini-stat cell-yellow">
+        <div class="stat-num-type" style="font-size:64px;">0</div>
+        <div class="body-md" style="color:var(--ink);margin-top:8px;">Manual typing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Badge -->
+  <div class="badge-rotated reveal d4" style="position:absolute;bottom:110px;left:96px;">
+    Open Source
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>lovely-shelf.vercel.app</span>
+    <span>01<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 2 — THE PROBLEM ===================== -->
+<section class="slide" id="slide-2">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>The Problem</span>
+    <span class="topbar-pill">Why Build This</span>
+  </div>
+
+  <div class="left-col">
+    <div class="kicker-block reveal d1" style="margin-bottom:36px;">The frustration</div>
+    <div class="d-lg reveal d2" style="color:var(--ink);">Manual<br>logging<br>is<br>broken.</div>
+  </div>
+
+  <div class="right-col">
+    <div class="problem-row reveal-left d2">
+      <div class="problem-num cell-pink">01</div>
+      <div class="problem-text">
+        <div class="problem-title">Time-consuming</div>
+        <div class="problem-body">Title, author, genre, description, quotes — every field typed by hand. 10 minutes per book.</div>
+      </div>
+    </div>
+    <div class="problem-row reveal-left d3">
+      <div class="problem-num cell-yellow">02</div>
+      <div class="problem-text">
+        <div class="problem-title">No deduplication</div>
+        <div class="problem-body">Add the same book twice by accident and you'd never know until you searched for it.</div>
+      </div>
+    </div>
+    <div class="problem-row reveal-left d4">
+      <div class="problem-num cell-orange" style="color:var(--cream);">03</div>
+      <div class="problem-text">
+        <div class="problem-title">Disconnected from your library</div>
+        <div class="problem-body">No quotes, no similar recommendations, no "you've read 14 novels this year" moment.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>Lovely Shelf</span>
+    <span>02<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 3 — HOW IT WORKS ===================== -->
+<section class="slide" id="slide-3">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>How It Works</span>
+    <span class="topbar-pill">4-Step Flow</span>
+  </div>
+
+  <div style="position:absolute;left:96px;top:130px;right:96px;border-bottom:3px dashed var(--ink);"></div>
+
+  <div class="flow-row reveal d2">
+    <div class="flow-card cell-cream">
+      <div class="flow-num">1</div>
+      <div class="flow-icon">📸</div>
+      <div class="flow-title">Snap</div>
+      <div class="flow-body">Point your camera at any book cover. HEIC, JPEG, PNG — all supported.</div>
+    </div>
+    <div class="flow-card cell-pink">
+      <div class="flow-num">2</div>
+      <div class="flow-icon">🤖</div>
+      <div class="flow-title">Recognize</div>
+      <div class="flow-body">Claude Vision extracts title, author, genre, country, description and 2–3 quotes.</div>
+    </div>
+    <div class="flow-card cell-yellow">
+      <div class="flow-num">3</div>
+      <div class="flow-icon">🔍</div>
+      <div class="flow-title">Deduplicate</div>
+      <div class="flow-body">Already in your library? Returns the existing record instead of creating a duplicate.</div>
+    </div>
+    <div class="flow-card cell-green">
+      <div class="flow-num" style="color:rgba(239,233,217,0.18);">4</div>
+      <div class="flow-icon">✅</div>
+      <div class="flow-title" style="color:var(--cream);">Save</div>
+      <div class="flow-body" style="color:rgba(239,233,217,0.8);">New Notion page created with cover photo, all metadata, and quotes — automatically.</div>
+    </div>
+  </div>
+
+  <div class="result-bar reveal d3">
+    <div class="result-bar-text">Result:</div>
+    <div class="result-bar-text" style="opacity:0.6;font-size:26px;font-family:var(--font-body);text-transform:none;">
+      Your book is in Notion in under 10 seconds. No typing. No searching. No duplicates.
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d4">
+    <span>Lovely Shelf</span>
+    <span>03<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 4 — UPLOAD & RECOGNIZE ===================== -->
+<section class="slide" id="slide-4">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Feature 01</span>
+    <span class="topbar-pill">Upload & Recognize</span>
+  </div>
+
+  <div class="text-col">
+    <div class="kicker-block reveal d1" style="margin-bottom:32px;">Scan in seconds</div>
+    <div class="d-md reveal d2" style="color:var(--ink);">Snap.<br>Scan.<br>Done.</div>
+    <div class="feature-list reveal d3">
+      <div class="feature-item">
+        <div class="fi-dot"></div>
+        <div class="fi-text">Drag-and-drop or tap to upload</div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-dot" style="background:var(--green);"></div>
+        <div class="fi-text">HEIC support — iPhone native format</div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-dot" style="background:var(--orange);"></div>
+        <div class="fi-text">Batch upload — multiple covers at once</div>
+      </div>
+      <div class="feature-item">
+        <div class="fi-dot" style="background:var(--yellow);"></div>
+        <div class="fi-text">Genre achievement badge after each add</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="img-col reveal d2" style="transition-delay:0.1s;">
+    <div class="screenshot-frame">
+      <img src="./assets/lovely-shelf-upload.png" alt="Upload page">
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d4">
+    <span>Lovely Shelf</span>
+    <span>04<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 5 — DASHBOARD ===================== -->
+<section class="slide" id="slide-5">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Feature 02</span>
+    <span class="topbar-pill">Dashboard</span>
+  </div>
+
+  <div class="img-col reveal d2">
+    <div class="screenshot-frame">
+      <img src="./assets/lovely-shelf-dashboard.png" alt="Dashboard page">
+    </div>
+  </div>
+
+  <div class="stat-col">
+    <div class="dash-stat cell-ink reveal d2">
+      <div class="dash-stat-num" style="color:var(--yellow);">Your Library</div>
+      <div class="dash-stat-label" style="color:rgba(239,233,217,0.5);margin-top:8px;">At a glance</div>
+    </div>
+    <div class="dash-stat cell-cream reveal d3">
+      <div class="dash-stat-num" style="color:var(--ink);">📊</div>
+      <div class="dash-stat-label">Genre breakdown</div>
+      <div class="body-md" style="color:var(--ink-2);margin-top:10px;">Pie chart — 小说, 心理学, 历史...</div>
+    </div>
+    <div class="dash-stat cell-green reveal d4">
+      <div class="dash-stat-num" style="color:var(--cream);">🔥</div>
+      <div class="dash-stat-label" style="color:rgba(239,233,217,0.7);">30-day heatmap</div>
+      <div class="body-md" style="color:rgba(239,233,217,0.7);margin-top:10px;">Activity streaks &amp; patterns</div>
+    </div>
+    <div class="dash-stat cell-pink reveal d5">
+      <div class="dash-stat-num" style="color:var(--ink);">🖼️</div>
+      <div class="dash-stat-label">Book modal</div>
+      <div class="body-md" style="color:var(--ink-2);margin-top:10px;">Tap any cover to edit in Notion</div>
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>Lovely Shelf</span>
+    <span>05<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 6 — QUOTE LIBRARY ===================== -->
+<section class="slide" id="slide-6">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Feature 03</span>
+    <span class="topbar-pill">Quote Library</span>
+  </div>
+
+  <div class="text-col">
+    <div class="kicker-block reveal d1" style="margin-bottom:32px;">Every word, saved</div>
+    <div class="d-md reveal d2" style="color:var(--ink);">Every<br>quote.<br>One place.</div>
+    <div class="body-lg reveal d3" style="color:var(--ink-2);margin-top:36px;max-width:560px;">
+      Claude extracts 2–3 quotes from every book. ❤️ Like them, filter by tab, add your own by hand.
+    </div>
+    <div class="tab-row reveal d4">
+      <div class="tab-chip active">全部</div>
+      <div class="tab-chip">手写</div>
+      <div class="tab-chip">书库语录</div>
+      <div class="tab-chip">已收藏</div>
+    </div>
+  </div>
+
+  <div class="img-col reveal d2" style="transition-delay:0.1s;">
+    <div class="screenshot-frame">
+      <img src="./assets/lovely-shelf-quote.png" alt="Quote library page">
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>Lovely Shelf</span>
+    <span>06<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 7 — QUOTE CARD STUDIO ===================== -->
+<section class="slide" id="slide-7">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Feature 04</span>
+    <span class="topbar-pill">Quote Card Studio</span>
+  </div>
+
+  <div class="title-block">
+    <div class="kicker-block reveal d1" style="margin-bottom:32px;">Share your highlights</div>
+    <div class="d-lg reveal d2" style="color:var(--ink);max-width:700px;">Turn quotes<br>into art.</div>
+    <div class="body-lg reveal d3" style="color:var(--ink-2);margin-top:36px;max-width:700px;">
+      Pick a quote, choose a background, add music — export as PNG or record as MP4 video.
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="studio-card cell-cream reveal d2">
+      <div class="sc-icon">🎨</div>
+      <div class="sc-title">Custom Backgrounds</div>
+      <div class="sc-body">Pixabay images or solid color fills. Styled to match the quote's mood.</div>
+    </div>
+    <div class="studio-card cell-pink reveal d3">
+      <div class="sc-icon">🎵</div>
+      <div class="sc-title">Music Layer</div>
+      <div class="sc-body">Ambient audio via Jamendo API. Playing softly behind your card.</div>
+    </div>
+    <div class="studio-card cell-yellow reveal d4">
+      <div class="sc-icon">📷</div>
+      <div class="sc-title">PNG Export</div>
+      <div class="sc-body">One-click download. Share to WeChat, Instagram, Notion — anywhere.</div>
+    </div>
+    <div class="studio-card cell-green reveal d5">
+      <div class="sc-icon" style="color:var(--cream);">🎬</div>
+      <div class="sc-title" style="color:var(--cream);">MP4 Recording</div>
+      <div class="sc-body" style="color:rgba(239,233,217,0.8);">Screen capture API records the card with music as a video file.</div>
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>Lovely Shelf</span>
+    <span>07<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 8 — AI CHAT ===================== -->
+<section class="slide" id="slide-8">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Feature 05</span>
+    <span class="topbar-pill">AI Chat Assistant</span>
+  </div>
+
+  <div class="text-col">
+    <div class="kicker-block reveal d1" style="margin-bottom:32px;">Ask your library</div>
+    <div class="d-md reveal d2" style="color:var(--ink);">Chat with<br>your<br>books.</div>
+    <div class="chat-example reveal d3">
+      <div class="chat-q">&gt; "What philosophy books have I read?"</div>
+      <div class="chat-a">→ Found 7 books in 哲学. Your most recent: <em>Meditations</em>. Want similar recommendations from your library?</div>
+    </div>
+    <div class="body-lg reveal d4" style="color:var(--ink-2);margin-top:28px;font-size:22px;">
+      SSE streaming · Claude reads your full Notion library · Agent pipeline with Tool Use
+    </div>
+  </div>
+
+  <div class="img-col reveal d2" style="transition-delay:0.1s;">
+    <div class="screenshot-frame">
+      <img src="./assets/lovely-shelf-chat.png" alt="AI Chat page">
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d5">
+    <span>Lovely Shelf</span>
+    <span>08<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 9 — TECH STACK ===================== -->
+<section class="slide" id="slide-9">
+  <div class="canvas"></div>
+  <div class="topbar reveal d1">
+    <span>Behind The Build</span>
+    <span class="topbar-pill">Tech Stack</span>
+  </div>
+
+  <div class="title-block">
+    <div class="kicker-block reveal d1" style="margin-bottom:32px;">Vibe coded in 7 days</div>
+    <div class="d-md reveal d2" style="color:var(--ink);">Built with<br>Claude<br>code.</div>
+  </div>
+
+  <div class="tech-table reveal d2" style="transition-delay:0.15s;">
+    <div class="tech-thead">
+      <div class="tech-th" style="flex:0.7;">Layer</div>
+      <div class="tech-th">Technology</div>
+      <div class="tech-th" style="flex:1.4;">Purpose</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">Framework</div>
+      <div class="tech-cell accent-green">Next.js 14</div>
+      <div class="tech-cell" style="flex:1.4;">App Router + TypeScript. Server components.</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">AI</div>
+      <div class="tech-cell accent-pink">Claude Vision</div>
+      <div class="tech-cell" style="flex:1.4;">Book cover recognition + Chat + Agent Tool Use</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">Database</div>
+      <div class="tech-cell">Notion API</div>
+      <div class="tech-cell" style="flex:1.4;">Your library lives in your own Notion workspace</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">Image</div>
+      <div class="tech-cell">Sharp + libheif</div>
+      <div class="tech-cell" style="flex:1.4;">Resize, convert HEIC, optimize covers before upload</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">Auth</div>
+      <div class="tech-cell">Auth.js</div>
+      <div class="tech-cell" style="flex:1.4;">Google OAuth · Demo mode with no account needed</div>
+    </div>
+    <div class="tech-row">
+      <div class="tech-cell layer" style="flex:0.7;">Deploy</div>
+      <div class="tech-cell">Vercel</div>
+      <div class="tech-cell" style="flex:1.4;">lovely-shelf.vercel.app — live now</div>
+    </div>
+  </div>
+
+  <div class="slide-meta reveal d3">
+    <span>Lovely Shelf</span>
+    <span>09<span class="meta-dot"></span>10</span>
+  </div>
+</section>
+
+
+<!-- ===================== SLIDE 10 — CLOSING ===================== -->
+<section class="slide" id="slide-10">
+  <div class="canvas-green"></div>
+
+  <div class="topbar topbar-light reveal d1">
+    <span>Get Started</span>
+    <span class="topbar-pill topbar-pill-light">Free & Open Source</span>
+  </div>
+
+  <div class="main-text">
+    <div class="kicker-block reveal d1" style="background:var(--cream);color:var(--ink);margin-bottom:40px;">Your story, on your shelf</div>
+    <div class="d-jumbo reveal d2" style="color:var(--cream);">Lovely<br>Shelf.</div>
+    <div class="body-lg reveal d3" style="color:rgba(239,233,217,0.7);margin-top:36px;max-width:700px;">
+      Point your camera at a book cover.<br>Watch it land in Notion.
+    </div>
+  </div>
+
+  <div class="right-block reveal d3">
+    <div class="url-card">
+      <div class="url-text">lovely-shelf<br>.vercel.app</div>
+    </div>
+    <div class="github-card">
+      <div class="github-text">github.com/sarahwangy/<br>lovely-shelf</div>
+    </div>
+  </div>
+
+  <div class="stamp">
+    <div class="stamp-inner">
+      <div class="stamp-text">Try<br>Demo<br>Free</div>
+    </div>
+  </div>
+
+  <div class="slide-meta slide-meta-light reveal d4">
+    <span>Lovely Shelf · 2026</span>
+    <span>10<span class="meta-dot meta-dot-light"></span>10</span>
+  </div>
+</section>
+
+</main>
+</div>
+
+<div class="slide-counter" id="slideCounter">1 / 10</div>
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle">✏️ Edit</button>
+
+<script>
+(function(){
+  const stage   = document.getElementById('deckStage');
+  const slides  = Array.from(document.querySelectorAll('.slide'));
+  const counter = document.getElementById('slideCounter');
+  let current   = 0;
+
+  /* --- Stage scaling --- */
+  function scale() {
+    const f = Math.min(window.innerWidth/1920, window.innerHeight/1080);
+    const x = (window.innerWidth  - 1920*f)/2;
+    const y = (window.innerHeight - 1080*f)/2;
+    stage.style.transform = `translate(${x}px,${y}px) scale(${f})`;
+  }
+  scale(); window.addEventListener('resize', scale);
+
+  /* --- Show slide --- */
+  function show(i) {
+    i = Math.max(0, Math.min(i, slides.length-1));
+    slides.forEach((s,j) => {
+      s.classList.toggle('active',  j===i);
+      s.classList.toggle('visible', j===i);
+    });
+    current = i;
+    counter.textContent = `${i+1} / ${slides.length}`;
+  }
+  show(0);
+
+  /* --- Keyboard --- */
+  document.addEventListener('keydown', e => {
+    if (editor.isActive && e.target.getAttribute('contenteditable')) return;
+    if (['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)) { e.preventDefault(); show(current+1); }
+    if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); show(current-1); }
+    if (e.key==='Home') { e.preventDefault(); show(0); }
+    if (e.key==='End')  { e.preventDefault(); show(slides.length-1); }
+  });
+
+  /* --- Wheel --- */
+  let wLock=false;
+  window.addEventListener('wheel', e=>{
+    if(wLock) return; wLock=true; setTimeout(()=>wLock=false, 700);
+    e.deltaY>0 ? show(current+1) : show(current-1);
+  },{passive:true});
+
+  /* --- Touch --- */
+  let tx=0;
+  window.addEventListener('touchstart', e=>{ tx=e.touches[0].clientX; },{passive:true});
+  window.addEventListener('touchend', e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    if(Math.abs(dx)>40) dx<0 ? show(current+1) : show(current-1);
+  },{passive:true});
+
+  /* --- Inline editor --- */
+  const editToggle = document.getElementById('editToggle');
+  const hotzone    = document.getElementById('editHotzone');
+  const editor = {
+    isActive: false,
+    toggleEditMode() {
+      this.isActive = !this.isActive;
+      editToggle.classList.toggle('active', this.isActive);
+      editToggle.textContent = this.isActive ? '💾 Save' : '✏️ Edit';
+      document.querySelectorAll(
+        '.deck-stage .d-jumbo,.deck-stage .d-hero,.deck-stage .d-xl,.deck-stage .d-lg,.deck-stage .d-md,.deck-stage .d-sm,.deck-stage .body-lg,.deck-stage .body-md,.deck-stage .flow-body,.deck-stage .problem-body,.deck-stage .problem-title,.deck-stage .flow-title,.deck-stage .sc-body,.deck-stage .sc-title,.deck-stage .chat-a,.deck-stage .chat-q,.deck-stage .dash-stat-num,.deck-stage .fi-text,.deck-stage .result-bar-text,.deck-stage .tech-cell'
+      ).forEach(el => { el.contentEditable = this.isActive ? 'true' : 'false'; });
+      if (!this.isActive) localStorage.setItem('lovely-shelf-ppt', stage.innerHTML);
+    }
+  };
+  const saved = localStorage.getItem('lovely-shelf-ppt');
+  if (saved) { stage.innerHTML = saved; show(0); }
+
+  let hTimer=null;
+  hotzone.addEventListener('mouseenter', ()=>{ clearTimeout(hTimer); editToggle.classList.add('show'); });
+  hotzone.addEventListener('mouseleave', ()=>{ hTimer=setTimeout(()=>{ if(!editor.isActive) editToggle.classList.remove('show'); },400); });
+  editToggle.addEventListener('mouseenter', ()=>clearTimeout(hTimer));
+  editToggle.addEventListener('mouseleave', ()=>{ hTimer=setTimeout(()=>{ if(!editor.isActive) editToggle.classList.remove('show'); },400); });
+  hotzone.addEventListener('click', ()=>editor.toggleEditMode());
+  editToggle.addEventListener('click', ()=>editor.toggleEditMode());
+  document.addEventListener('keydown', e=>{
+    if((e.key==='e'||e.key==='E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+  });
+})();
+</script>
+</body>
+</html>
