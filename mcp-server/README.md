@@ -22,6 +22,23 @@ Lovely Shelf's web app lets you photograph a book cover and have Claude Vision c
 
 This is a standalone Node process, separate from the Next.js web app — it communicates with MCP clients over stdio, not HTTP. It reuses the same Notion field mapping (`notion-fields.ts`) and REST API query patterns as the main app's `src/lib/notion.ts`, reimplemented standalone since MCP servers run as independent processes and can't import the Next.js app's path aliases directly.
 
+## How this relates to the web app (important)
+
+This server is **not part of the deployed web app** and has no runtime connection to it — visiting the Lovely Shelf website does not start or use this server in any way. The only thing they share is the same underlying Notion database:
+
+```
+Claude Desktop / Claude Code (local, on your machine)
+   ↓ launched on demand, per its own config file
+mcp-server/index.ts (local process, talks over stdio)
+   ↓ calls the Notion API
+Your real Notion book database
+```
+
+- **Who can use it**: only people running an MCP-capable AI client — currently Claude Desktop or Claude Code. There is no way to use it from a browser or from the regular Lovely Shelf website.
+- **What "using it" requires**: the user must add this server's launch command (plus their own `NOTION_TOKEN` / `NOTION_DATABASE_ID`) to their client's own config file (e.g. `claude_desktop_config.json`), then restart the client. It is not something a visitor can turn on themselves from the site.
+- **When it runs**: the client starts this process on demand each time it launches, per its config — it is not a persistent background service, and it doesn't run at all unless a client is configured to start it.
+- **Why it exists alongside the web app**: the website is the general-purpose entry point (photograph a cover, browse the gallery); the MCP server is a parallel, developer-facing channel that lets an AI client query the same data with natural language (e.g. "do I already have a book by this author?"). Neither one calls the other — they're two independent doors into the same Notion database.
+
 ```
 mcp-server/
   index.ts           # server entry point — registers tools, handles MCP protocol
